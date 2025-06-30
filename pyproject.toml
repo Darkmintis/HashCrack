@@ -1,0 +1,146 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hashcrack"
+version = "2.0.0"
+authors = [
+    {name = "Darkmintis", email = "hashcrack@darkmintis.com"},
+]
+description = "Next-Generation Hash Cracking Tool"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Systems Administration",
+]
+keywords = ["security", "cryptography", "password", "hash", "cracking", "penetration-testing", "ctf"]
+dependencies = [
+    "flask>=2.0.1",
+    "flask-cors>=3.0.10",
+    "requests>=2.26.0",
+    "hashid>=3.1.4",
+    "websockets>=10.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-mock>=3.10.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+]
+docs = [
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.19.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Darkmintis/HashCrack"
+Documentation = "https://github.com/Darkmintis/HashCrack#readme"
+Repository = "https://github.com/Darkmintis/HashCrack.git"
+"Bug Tracker" = "https://github.com/Darkmintis/HashCrack/issues"
+Changelog = "https://github.com/Darkmintis/HashCrack/blob/main/CHANGELOG.md"
+Funding = "https://github.com/sponsors/Darkmintis"
+
+[project.scripts]
+hashcrack = "hashcrack:main"
+hashcrack-web = "web_interface:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hashcrack*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+hashcrack = ["templates/*", "static/*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | wordlists
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+include_trailing_comma = true
+skip_glob = ["wordlists/*"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["wordlists/", "tests/"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+    "*/wordlists/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "wordlists"]
+skips = ["B101"]  # Skip assert_used test
