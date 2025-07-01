@@ -3,38 +3,15 @@
  * Main JavaScript for team collaboration and hash cracking
  */
 
-// Configuration with smart environment detection
+// Configuration for client-side only operation
 const CONFIG = {
-    // Use external config if available, otherwise fallback
-    get API_BASE_URL() {
-        if (window.HASHCRACK_CONFIG) {
-            return window.HASHCRACK_CONFIG.getApiUrl();
-        }
-        // Fallback for when config.js is not loaded
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'http://localhost:5000';
-        }
-        return 'https://hashcrack-demo.render.com';
-    },
-    get WS_URL() {
-        if (window.HASHCRACK_CONFIG) {
-            return window.HASHCRACK_CONFIG.getWsUrl();
-        }
-        // Fallback
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'ws://localhost:5000';
-        }
-        return 'wss://hashcrack-demo.render.com';
-    },
-    VERSION: '2.0.0',
-    FALLBACK_MODE: true
+    VERSION: 'v0.5-dev',
+    OFFLINE_MODE: true // Pure client-side, no backend
 };
 
 // Global state
 const AppState = {
     currentUser: null,
-    currentTeam: null,
-    isConnected: false,
     activeJobs: new Map(),
     teamWordlists: [],
     results: []
@@ -49,12 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeApp() {
     console.log('[APP] Initializing HashCrack v' + CONFIG.VERSION);
-    
-    // Show loading state
-    updateConnectionStatus('disconnected');
-    
-    // Try to connect to API
-    checkApiConnection();
     
     // Initialize demo animation
     startDemoAnimation();
@@ -93,12 +64,6 @@ function setupEventListeners() {
     const fileInput = document.getElementById('wordlistFile');
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
-    }
-    
-    // Connect button
-    const connectBtn = document.getElementById('connectBtn');
-    if (connectBtn) {
-        connectBtn.addEventListener('click', toggleConnection);
     }
 }
 

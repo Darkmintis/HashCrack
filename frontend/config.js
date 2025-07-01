@@ -1,52 +1,56 @@
 /**
- * HashCrack Configuration
- * 
- * DEPLOYMENT INSTRUCTIONS:
- * 1. Deploy backend to Render and get your URL (e.g., https://your-app.render.com)
- * 2. Replace YOUR_RENDER_URL_HERE with your actual Render URL
- * 3. Deploy frontend to GitHub Pages
- * 4. Users can now access your service!
+ * HashCrack Simple Configuration
+ * For client-side hash cracking with minimal backend
  */
 
 window.HASHCRACK_CONFIG = {
-    // CHANGE THIS: Replace with your actual Render backend URL
-    PRODUCTION_API_URL: 'https://YOUR_RENDER_URL_HERE',
+    // CHANGE THIS: Replace with your Render backend URL
+    BACKEND_URL: 'https://your-render-app.onrender.com',
     
-    // Optional: Custom branding
+    // App info
     APP_NAME: 'HashCrack',
-    TEAM_NAME: 'Your Organization', // Will appear in UI
+    VERSION: 'v0.5-dev', // Development phase
     
-    // Optional: Feature flags
+    // Features (keep it simple)
     FEATURES: {
-        TEAM_MODE: true,
-        P2P_CRACKING: true,
-        WORDLIST_UPLOAD: true,
-        YESCRYPT_SUPPORT: true
+        CLIENT_SIDE_CRACKING: true,
+        TEAM_COORDINATION: true,
+        P2P_SHARING: true,
+        CUSTOM_WORDLISTS: true
     },
     
-    // Optional: Limits
-    LIMITS: {
-        MAX_HASH_LENGTH: 200,
-        MAX_WORDLIST_SIZE_MB: 100,
-        MAX_TEAM_SIZE: 20
-    }
+    // Limits
+    MAX_HASH_LENGTH: 200,
+    MAX_WORDLIST_SIZE_MB: 10, // Keep it small for client-side
+    MAX_TEAM_SIZE: 10
 };
 
-// Auto-generate URLs based on environment
-window.HASHCRACK_CONFIG.getApiUrl = function() {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// Auto-detect environment
+window.HASHCRACK_CONFIG.getBackendUrl = function() {
+    const hostname = window.location.hostname;
     
-    if (isLocal) {
+    // Development (local testing)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return 'http://localhost:5000';
     }
     
-    if (this.PRODUCTION_API_URL === 'https://YOUR_RENDER_URL_HERE') {
-        console.warn('⚠️ CONFIGURATION NEEDED: Please update PRODUCTION_API_URL in config.js with your Render URL');
-        return 'https://hashcrack-demo.render.com'; // Fallback demo URL
+    // Production (GitHub Pages)
+    if (this.BACKEND_URL === 'https://your-render-app.onrender.com') {
+        console.warn('⚠️ Please update BACKEND_URL in config.js with your Render URL');
+        return 'https://hashcrack-demo.onrender.com'; // Fallback
     }
     
-    return this.PRODUCTION_API_URL;
+    return this.BACKEND_URL;
 };
+
+// WebSocket URL
+window.HASHCRACK_CONFIG.getWebSocketUrl = function() {
+    const backendUrl = this.getBackendUrl();
+    return backendUrl.replace('http', 'ws') + '/socket.io/';
+};
+
+console.log('🚀 HashCrack Simple Config Loaded');
+console.log('� Backend:', window.HASHCRACK_CONFIG.getBackendUrl());
 
 window.HASHCRACK_CONFIG.getWsUrl = function() {
     return this.getApiUrl().replace('http://', 'ws://').replace('https://', 'wss://');
