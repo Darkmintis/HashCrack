@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashCrack - Professional Hash Cracking Platform</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔓</text></svg>">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>HashCrack</span>
+                <span class="version">v0.5-dev</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="#home" class="nav-link active">Dashboard</a>
+                <a href="#crack" class="nav-link">Crack Hash</a>
+                <a href="#wordlists" class="nav-link">Wordlists</a>
+                <a href="#results" class="nav-link">Results</a>
+                <a href="#team" class="nav-link">Team</a>
+                <a href="#api" class="nav-link">API</a>
+            </div>
+            
+            <div class="nav-actions">
+                <button class="btn-secondary" id="settingsBtn">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section id="home" class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        Professional Hash Cracking
+                        <span class="gradient-text">Made Simple</span>
+                    </h1>
+                    <p class="hero-description">
+                        Enterprise-grade hash cracking platform with distributed computing, 
+                        real-time collaboration, and intelligent automation. 
+                        Crack passwords faster than ever before.
+                    </p>
+                    
+                    <div class="hero-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalHashes">0</div>
+                            <div class="stat-label">Hashes Cracked</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="activeNodes">0</div>
+                            <div class="stat-label">Active Nodes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalSpeed">0 H/s</div>
+                            <div class="stat-label">Network Speed</div>
+                        </div>
+                    </div>
+                    
+                    <div class="hero-actions">
+                        <button class="btn-primary large" onclick="showCrackSection()">
+                            <i class="fas fa-rocket"></i>
+                            Start Cracking
+                        </button>
+                        <button class="btn-secondary large" onclick="showDemo()">
+                            <i class="fas fa-play"></i>
+                            Watch Demo
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="hero-visual">
+                    <div class="crack-visualization">
+                        <div class="hash-container">
+                            <div class="hash-input">
+                                <span class="hash-text" id="demoHash">5f4dcc3b5aa765d61d8327deb882cf99</span>
+                            </div>
+                            <div class="crack-arrow">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="result-output">
+                                <span class="result-text" id="demoResult">password123</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-ring">
+                            <svg class="progress-svg" width="120" height="120">
+                                <circle cx="60" cy="60" r="50" class="progress-bg"></circle>
+                                <circle cx="60" cy="60" r="50" class="progress-fill" id="demoProgress"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span id="progressPercent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Crack Hash Section -->
+        <section id="crack" class="crack-section" style="display: none;">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>Crack Hash</h2>
+                    <p>Enter your hash and let our distributed network crack it</p>
+                </div>
+                
+                <div class="crack-interface">
+                    <div class="crack-input-panel">
+                        <div class="input-group">
+                            <label for="hashInput">Hash to Crack</label>
+                            <div class="input-container">
+                                <input type="text" id="hashInput" placeholder="Enter hash (e.g., 5f4dcc3b5aa765d61d8327deb882cf99)" class="hash-input-field">
+                                <button class="btn-icon" onclick="pasteFromClipboard()" title="Paste from clipboard">
+                                    <i class="fas fa-paste"></i>
+                                </button>
+                            </div>
+                            <div class="hash-info" id="hashInfo" style="display: none;">
+                                <span class="hash-type" id="detectedType">MD5</span>
+                                <span class="confidence" id="confidence">95% confidence</span>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="wordlistSelect">Wordlist Strategy</label>
+                            <select id="wordlistSelect" class="select-field">
+                                <option value="auto">Auto-Select Optimal</option>
+                                <option value="rockyou">RockYou (14M passwords)</option>
+                                <option value="common">Common Passwords</option>
+                                <option value="ctf">CTF-Specific</option>
+                                <option value="custom">Upload Custom</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Attack Mode</label>
+                            <div class="mode-selector">
+                                <button class="mode-btn active" data-mode="dictionary">
+                                    <i class="fas fa-book"></i>
+                                    Dictionary
+                                </button>
+                                <button class="mode-btn" data-mode="hybrid">
+                                    <i class="fas fa-sync"></i>
+                                    Hybrid
+                                </button>
+                                <button class="mode-btn" data-mode="brute">
+                                    <i class="fas fa-bolt"></i>
+                                    Brute Force
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="crack-actions">
+                            <button class="btn-primary large" id="startCrackBtn" onclick="startCracking()">
+                                <i class="fas fa-play"></i>
+                                Start Cracking
+                            </button>
+                            <button class="btn-secondary" onclick="resetForm()">
+                                <i class="fas fa-redo"></i>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="crack-status-panel">
+                        <div class="status-header">
+                            <h3>Cracking Status</h3>
+                            <div class="status-indicator idle" id="statusIndicator">
+                                <span></span>
+                                <span>Idle</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-display">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="mainProgress"></div>
+                                <span class="progress-label" id="progressLabel">0%</span>
+                            </div>
+                            
+                            <div class="progress-details">
+                                <div class="detail-item">
+                                    <span class="label">Speed:</span>
+                                    <span class="value" id="crackSpeed">0 H/s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="label">ETA:</span>
+                                    <span class="value" id="crackETA">--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="label">Engine:</span>
+                                    <span class="value" id="crackEngine">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="result-display" id="resultDisplay" style="display: none;">
+                            <div class="result-header">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Hash Cracked!</span>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-item">
+                                    <span class="label">Original Hash:</span>
+                                    <span class="value" id="originalHash">--</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="label">Cracked Password:</span>
+                                    <span class="value password" id="crackedPassword">--</span>
+                                    <button class="btn-icon" onclick="copyPassword()" title="Copy password">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <div class="result-item">
+                                    <span class="label">Time Taken:</span>
+                                    <span class="value" id="timeTaken">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Network Nodes Section -->
+        <section id="nodes" class="nodes-section">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>Distributed Network</h2>
+                    <p>Real-time view of connected nodes contributing to the cracking network</p>
+                </div>
+                
+                <div class="nodes-grid" id="nodesGrid">
+                    <!-- Nodes will be populated dynamically -->
+                </div>
+                
+                <div class="network-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-network-wired"></i>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalNodes">0</span>
+                            <span class="stat-label">Total Nodes</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <div class="stat-info">
+                            <span class="stat-value" id="avgSpeed">0 H/s</span>
+                            <span class="stat-label">Average Speed</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-globe"></i>
+                        <div class="stat-info">
+                            <span class="stat-value" id="countries">0</span>
+                            <span class="stat-label">Countries</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Collaboration Section -->
+        <section id="team" class="team-section" style="display: none;">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>Team Collaboration</h2>
+                    <p>Create or join a team room to collaborate on hash cracking with real-time updates</p>
+                </div>
+                
+                <div class="team-interface">
+                    <!-- Team Creation/Join -->
+                    <div class="team-setup" id="teamSetup">
+                        <div class="team-tabs">
+                            <button class="tab-btn active" onclick="showTeamTab('create')">
+                                <i class="fas fa-plus"></i>
+                                Create Team
+                            </button>
+                            <button class="tab-btn" onclick="showTeamTab('join')">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Join Team
+                            </button>
+                        </div>
+                        
+                        <div class="tab-content" id="createTab">
+                            <div class="setup-card">
+                                <div class="card-header">
+                                    <i class="fas fa-users"></i>
+                                    <h3>Create New Team Room</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Team Name</label>
+                                        <input type="text" id="createTeamName" placeholder="e.g., CTF_Team_Alpha, PenTest_Squad">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Your Name</label>
+                                        <input type="text" id="createUserName" placeholder="Your display name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Team Description (Optional)</label>
+                                        <input type="text" id="createTeamDesc" placeholder="Brief description of your team">
+                                    </div>
+                                    <button class="btn-primary large" onclick="createTeam()">
+                                        <i class="fas fa-rocket"></i>
+                                        Create Team Room
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="joinTab" style="display: none;">
+                            <div class="setup-card">
+                                <div class="card-header">
+                                    <i class="fas fa-door-open"></i>
+                                    <h3>Join Existing Team</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Team ID or Link</label>
+                                        <input type="text" id="joinTeamId" placeholder="team_123abc or full URL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Your Name</label>
+                                        <input type="text" id="joinUserName" placeholder="Your display name">
+                                    </div>
+                                    <button class="btn-primary large" onclick="joinTeam()">
+                                        <i class="fas fa-users"></i>
+                                        Join Team Room
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Team Dashboard -->
+                    <div class="team-dashboard" id="teamDashboard" style="display: none;">
+                        <div class="team-header">
+                            <div class="team-info">
+                                <h3 id="teamName">Team Alpha</h3>
+                                <div class="team-meta">
+                                    <span class="team-id" id="teamId">team_123abc</span>
+                                    <button class="btn-icon" onclick="copyTeamId()" title="Copy team ID">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <span class="team-status online">
+                                        <i class="fas fa-circle"></i>
+                                        Connected
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="team-actions">
+                                <button class="btn-secondary" onclick="shareTeamLink()">
+                                    <i class="fas fa-share"></i>
+                                    Share Link
+                                </button>
+                                <button class="btn-danger" onclick="leaveTeam()">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    Leave Team
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="team-content">
+                            <!-- Team Stats -->
+                            <div class="team-stats">
+                                <div class="stat-item">
+                                    <i class="fas fa-users"></i>
+                                    <span class="stat-value" id="memberCount">0</span>
+                                    <span class="stat-label">Members</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-tasks"></i>
+                                    <span class="stat-value" id="activeJobsCount">0</span>
+                                    <span class="stat-label">Active Jobs</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-trophy"></i>
+                                    <span class="stat-value" id="crackedCount">0</span>
+                                    <span class="stat-label">Cracked</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span class="stat-value" id="teamSpeed">0 H/s</span>
+                                    <span class="stat-label">Team Speed</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Team Members -->
+                            <div class="team-section-card">
+                                <div class="section-title">
+                                    <h4>Team Members</h4>
+                                    <button class="btn-icon" onclick="refreshMembers()">
+                                        <i class="fas fa-sync"></i>
+                                    </button>
+                                </div>
+                                <div class="members-grid" id="membersList">
+                                    <!-- Members populated dynamically -->
+                                </div>
+                            </div>
+                            
+                            <!-- Team Wordlists -->
+                            <div class="team-section-card">
+                                <div class="section-title">
+                                    <h4>Team Wordlists</h4>
+                                    <div class="section-actions">
+                                        <button class="btn-primary small" onclick="showUploadWordlist()">
+                                            <i class="fas fa-upload"></i>
+                                            Upload
+                                        </button>
+                                        <button class="btn-secondary small" onclick="generateContextualWordlist()">
+                                            <i class="fas fa-magic"></i>
+                                            Generate
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="wordlists-grid" id="teamWordlistsGrid">
+                                    <!-- Wordlists populated dynamically -->
+                                </div>
+                            </div>
+                            
+                            <!-- Active Jobs -->
+                            <div class="team-section-card">
+                                <div class="section-title">
+                                    <h4>Active Cracking Jobs</h4>
+                                    <span class="job-count" id="jobCount">0 active</span>
+                                </div>
+                                <div class="jobs-list" id="activeJobsList">
+                                    <div class="empty-state">
+                                        <i class="fas fa-clipboard-list"></i>
+                                        <p>No active jobs. Start cracking some hashes!</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Team Chat -->
+                            <div class="team-section-card">
+                                <div class="section-title">
+                                    <h4>Team Chat</h4>
+                                    <button class="btn-icon" onclick="toggleChat()">
+                                        <i class="fas fa-comment"></i>
+                                    </button>
+                                </div>
+                                <div class="team-chat" id="teamChat">
+                                    <div class="chat-messages" id="chatMessages">
+                                        <!-- Messages populated dynamically -->
+                                    </div>
+                                    <div class="chat-input">
+                                        <input type="text" id="chatInput" placeholder="Type a message...">
+                                        <button class="btn-icon" onclick="sendChatMessage()">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wordlists Section -->
+        <section id="wordlists" class="wordlists-section" style="display: none;">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>Wordlists</h2>
+                    <p>Manage wordlists for password cracking</p>
+                </div>
+                
+                <div class="wordlists-interface">
+                    <!-- Popular Wordlists -->
+                    <div class="popular-wordlists">
+                        <h3>Popular Wordlists</h3>
+                        <div class="wordlists-grid" id="popularWordlistsGrid">
+                            <div class="wordlist-card">
+                                <div class="wordlist-info">
+                                    <h4>RockYou</h4>
+                                    <p>14M most common passwords</p>
+                                    <span class="size">133 MB</span>
+                                </div>
+                                <button class="btn-primary" onclick="downloadWordlist('rockyou')">
+                                    <i class="fas fa-download"></i>
+                                    Download
+                                </button>
+                            </div>
+                            
+                            <div class="wordlist-card">
+                                <div class="wordlist-info">
+                                    <h4>SecLists Common</h4>
+                                    <p>Top 1M passwords from SecLists</p>
+                                    <span class="size">8.3 MB</span>
+                                </div>
+                                <button class="btn-primary" onclick="downloadWordlist('seclists')">
+                                    <i class="fas fa-download"></i>
+                                    Download
+                                </button>
+                            </div>
+                            
+                            <div class="wordlist-card">
+                                <div class="wordlist-info">
+                                    <h4>CTF Passwords</h4>
+                                    <p>CTF-specific wordlist</p>
+                                    <span class="size">0.1 MB</span>
+                                </div>
+                                <button class="btn-primary" onclick="downloadWordlist('ctf')">
+                                    <i class="fas fa-download"></i>
+                                    Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Upload -->
+                    <div class="custom-wordlists">
+                        <h3>Upload Custom Wordlist</h3>
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drag & drop your wordlist here or click to browse</p>
+                                <input type="file" id="wordlistFile" accept=".txt,.lst,.dic" style="display: none;">
+                                <button class="btn-secondary" onclick="document.getElementById('wordlistFile').click()">
+                                    Choose File
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="upload-details" id="uploadDetails" style="display: none;">
+                            <div class="input-group">
+                                <label>Wordlist Name</label>
+                                <input type="text" id="wordlistName" placeholder="My Custom Wordlist">
+                            </div>
+                            <div class="input-group">
+                                <label>Description</label>
+                                <input type="text" id="wordlistDescription" placeholder="Description (optional)">
+                            </div>
+                            <div class="input-group">
+                                <label>Category</label>
+                                <select id="wordlistCategory">
+                                    <option value="custom">Custom</option>
+                                    <option value="passwords">Passwords</option>
+                                    <option value="ctf">CTF</option>
+                                    <option value="corporate">Corporate</option>
+                                    <option value="gaming">Gaming</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" onclick="uploadWordlist()">
+                                <i class="fas fa-upload"></i>
+                                Upload to Team
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="results-section" style="display: none;">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>Cracking Results</h2>
+                    <p>View and manage your hash cracking results</p>
+                </div>
+                
+                <div class="results-interface">
+                    <div class="results-filters">
+                        <input type="text" id="searchResults" placeholder="Search results...">
+                        <select id="filterEngine">
+                            <option value="">All Engines</option>
+                            <option value="john">John the Ripper</option>
+                            <option value="hashcat">Hashcat</option>
+                            <option value="distributed">Distributed</option>
+                        </select>
+                        <select id="filterHashType">
+                            <option value="">All Hash Types</option>
+                            <option value="md5">MD5</option>
+                            <option value="sha1">SHA1</option>
+                            <option value="ntlm">NTLM</option>
+                            <option value="yescrypt">yescrypt</option>
+                        </select>
+                    </div>
+                    
+                    <div class="results-table">
+                        <table id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Hash</th>
+                                    <th>Type</th>
+                                    <th>Password</th>
+                                    <th>Engine</th>
+                                    <th>Time</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <!-- Results populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wordlist Upload Modal -->
+        <div id="uploadWordlistModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <i class="fas fa-upload"></i>
+                        Upload Team Wordlist
+                    </h3>
+                    <button class="modal-close" onclick="closeUploadModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Wordlist Name</label>
+                        <input type="text" id="uploadWordlistName" placeholder="e.g., CTF_2024_Passwords">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="uploadWordlistCategory">
+                            <option value="custom">Custom</option>
+                            <option value="ctf">CTF Specific</option>
+                            <option value="corporate">Corporate</option>
+                            <option value="tech">Technology</option>
+                            <option value="gaming">Gaming</option>
+                            <option value="social">Social Media</option>
+                            <option value="leaked">Leaked Passwords</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="uploadWordlistDesc" placeholder="Brief description of this wordlist..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Wordlist File</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to select or drag & drop wordlist file</p>
+                            <small>Supported formats: .txt, .dic, .lst (Max 100MB)</small>
+                            <input type="file" id="wordlistFileInput" accept=".txt,.dic,.lst" style="display: none;">
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn-primary" onclick="uploadWordlist()">
+                            <i class="fas fa-upload"></i>
+                            Upload Wordlist
+                        </button>
+                        <button class="btn-secondary" onclick="closeUploadModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contextual Wordlist Generator Modal -->
+        <div id="generateWordlistModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <i class="fas fa-magic"></i>
+                        Generate Contextual Wordlist
+                    </h3>
+                    <button class="modal-close" onclick="closeGenerateModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Context Type</label>
+                        <select id="contextType">
+                            <option value="ctf">CTF Competition</option>
+                            <option value="company">Company/Organization</option>
+                            <option value="person">Person/Individual</option>
+                            <option value="technology">Technology/Product</option>
+                            <option value="event">Event/Date</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Keywords (comma separated)</label>
+                        <input type="text" id="contextKeywords" placeholder="e.g., hackthebox, 2024, cyber, security">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Additional Info</label>
+                        <textarea id="contextInfo" placeholder="Any additional context..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn-primary" onclick="generateWordlist()">
+                            <i class="fas fa-magic"></i>
+                            Generate Wordlist
+                        </button>
+                        <button class="btn-secondary" onclick="closeGenerateModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Share Modal -->
+        <div id="shareTeamModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <i class="fas fa-share"></i>
+                        Share Team Room
+                    </h3>
+                    <button class="modal-close" onclick="closeShareModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="share-options">
+                        <div class="share-option">
+                            <label>Team ID</label>
+                            <div class="copy-field">
+                                <input type="text" id="shareTeamId" readonly>
+                                <button class="btn-icon" onclick="copyToClipboard('shareTeamId')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="share-option">
+                            <label>Direct Link</label>
+                            <div class="copy-field">
+                                <input type="text" id="shareTeamLink" readonly>
+                                <button class="btn-icon" onclick="copyToClipboard('shareTeamLink')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="share-qr">
+                            <div id="qrCode"></div>
+                            <p>Scan QR code to join team</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Documentation Section -->
+        <section id="api" class="api-section" style="display: none;">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2>API Documentation</h2>
+                    <p>Integrate HashCrack into your applications and workflows</p>
+                </div>
+                
+                <div class="api-interface">
+                    <div class="api-overview">
+                        <div class="api-card">
+                            <h3>RESTful API</h3>
+                            <p>Full HTTP API for hash cracking, team management, and wordlist operations</p>
+                            <div class="api-endpoints">
+                                <div class="endpoint">
+                                    <span class="method post">POST</span>
+                                    <span class="path">/api/crack_hash</span>
+                                    <span class="description">Submit hash for cracking</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method get">GET</span>
+                                    <span class="path">/api/identify_hash</span>
+                                    <span class="description">Identify hash type</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method post">POST</span>
+                                    <span class="path">/api/create_team</span>
+                                    <span class="description">Create team room</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method ws">WS</span>
+                                    <span class="path">/socket.io</span>
+                                    <span class="description">Real-time updates</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3>Example Usage</h3>
+                            <div class="code-example">
+                                <pre><code># Crack a hash
+curl -X POST ${CONFIG.API_BASE_URL}/api/crack_hash \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+    "wordlists": ["rockyou"],
+    "mode": "solo"
+  }'
+
+# Response
+{
+  "success": true,
+  "plaintext": "password",
+  "hash_type": "MD5",
+  "time_taken": 0.23,
+  "engine_used": "john"
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Connection Modal -->
+    <div id="connectionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect to Network</h3>
+                <button class="modal-close" onclick="closeModal('connectionModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Join the distributed cracking network and contribute your computational power.</p>
+                
+                <div class="connection-options">
+                    <div class="option-card">
+                        <i class="fas fa-desktop"></i>
+                        <h4>Contribute Resources</h4>
+                        <p>Share your CPU/GPU power to help crack hashes faster</p>
+                        <button class="btn-primary" onclick="startContributing()">Start Contributing</button>
+                    </div>
+                    
+                    <div class="option-card">
+                        <i class="fas fa-cloud"></i>
+                        <h4>Use Network Only</h4>
+                        <p>Submit hashes to be cracked by the network</p>
+                        <button class="btn-secondary" onclick="useNetworkOnly()">Use Network</button>
+                    </div>
+                </div>
+                
+                <div class="resource-settings" id="resourceSettings" style="display: none;">
+                    <h4>Resource Allocation</h4>
+                    <div class="setting-item">
+                        <label>CPU Usage:</label>
+                        <input type="range" id="cpuSlider" min="0" max="100" value="50">
+                        <span id="cpuValue">50%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>GPU Usage:</label>
+                        <input type="range" id="gpuSlider" min="0" max="100" value="0">
+                        <span id="gpuValue">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="js/offline.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/p2p.js"></script>
+</body>
+</html>
