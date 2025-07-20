@@ -6,6 +6,7 @@ from typing import List, Optional
 import hashlib
 import os
 import uuid
+from datetime import datetime
 
 
 from team_api import router as team_router
@@ -27,6 +28,16 @@ app.include_router(team_router)
 
 # In-memory job store (replace with DB in production)
 jobs = {}
+
+# In-memory dashboard stats (replace with DB or real metrics in production)
+dashboard_stats = {
+    'hashes_cracked': 1234,  # Example value
+    'active_nodes': 7,       # Example value
+    'network_speed': 150000  # Example value (hashes per second)
+}
+
+# In-memory results store (replace with DB in production)
+results_store = []
 
 class CrackRequest(BaseModel):
     hash: str
@@ -81,6 +92,45 @@ def download_wordlist(wordlist_id: str):
         if fname.startswith(wordlist_id):
             return FileResponse(f"wordlists/{fname}", filename=fname.split('_', 1)[-1])
     raise HTTPException(status_code=404, detail="Wordlist not found")
+
+@app.get("/api/list_wordlists")
+def list_wordlists():
+    wordlists = []
+    wordlists_dir = "wordlists"
+    if not os.path.exists(wordlists_dir):
+        return []
+    for fname in os.listdir(wordlists_dir):
+        path = os.path.join(wordlists_dir, fname)
+        if os.path.isfile(path):
+            try:
+                wordlist_id, filename = fname.split('_', 1)
+            except ValueError:
+                wordlist_id, filename = fname, fname
+            size = os.path.getsize(path)
+            upload_time = datetime.fromtimestamp(os.path.getctime(path)).isoformat()
+            wordlists.append({
+                "id": wordlist_id,
+                "filename": filename,
+                "size": size,
+                "upload_time": upload_time
+            })
+    return wordlists
+
+@app.get("/api/dashboard_stats")
+def get_dashboard_stats():
+    return dashboard_stats
+
+@app.post("/api/store_result")
+def store_result(result: dict):
+    # Add a timestamp
+    from datetime import datetime
+    result['date'] = datetime.now().isoformat()
+    results_store.append(result)
+    return {"success": True}
+
+@app.get("/api/list_results")
+def list_results():
+    return results_store
 
 @app.websocket("/socket.io")
 async def websocket_endpoint(websocket: WebSocket):
