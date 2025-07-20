@@ -217,38 +217,40 @@ class P2PManager {
         this.sendMessage(peer, message);
     }
     
+    /**
+     * Handle work result from a peer (supports multiple jobs)
+     * @param {object} peer - The peer sending the result
+     * @param {object} result - The result object
+     */
+    handleWorkResult(peer, result) {
+        if (!this.completedJobs) this.completedJobs = new Set();
+        if (result.success && !this.completedJobs.has(result.job_id)) {
+            this.completedJobs.add(result.job_id);
+            // Stop all peers for this job
+            this.broadcastStopWork(result.job_id);
+            // UI update (if callback is set by app.js)
+            if (typeof window.onDistributedCrackResult === 'function') {
+                window.onDistributedCrackResult(result);
+            }
+        } else if (!result.success && this.assignmentQueue && this.assignmentQueue.length > 0) {
+            // If not successful and queue exists, assign next wordlist to this peer
+            this.assignNextFromQueue(peer.id);
+        }
+    }
+
+    /**
+     * Handle peer messages, including stop_work for specific jobs
+     */
     handlePeerMessage(peer, message) {
-        console.log('[P2P] Message from', peer.id, ':', message.type);
-        
-        switch (message.type) {
-            case 'capabilities':
-                peer.capabilities = message.data.capabilities;
-                peer.benchmark = message.data.benchmark;
-                console.log('[P2P] Peer capabilities:', peer.capabilities);
-                break;
-                
-            case 'work_assignment':
-                this.handleWorkAssignment(peer, message.data);
-                break;
-                
-            case 'work_result':
-                this.handleWorkResult(peer, message.data);
-                break;
-                
-            case 'work_progress':
-                this.handleWorkProgress(peer, message.data);
-                break;
-                
-            case 'ping':
-                this.sendMessage(peer, { type: 'pong', data: { timestamp: Date.now() } });
-                break;
-                
-            case 'pong':
-                peer.lastSeen = Date.now();
-                break;
-                
-            default:
-                console.warn('[P2P] Unknown message type:', message.type);
+        if (message.type === 'stop_work' && message.data && message.data.job_id) {
+            if (this.activeWork && this.activeWork.assignment && this.activeWork.assignment.job_id === message.data.job_id) {
+                this.activeWork = null;
+            }
+        } else {
+            // Call original handler if exists
+            if (typeof this._originalHandlePeerMessage === 'function') {
+                this._originalHandlePeerMessage(peer, message);
+            }
         }
     }
     
@@ -452,6 +454,130 @@ class P2PManager {
                 last_seen: peer.lastSeen
             }))
         };
+    }
+
+    /**
+     * Split a wordlist into N chunks for distribution
+     * @param {Array<string>} wordlist - The full wordlist
+     * @param {number} numChunks - Number of chunks (peers)
+     * @returns {Array<Array<string>>} Array of wordlist chunks
+     */
+    splitWordlist(wordlist, numChunks) {
+        const chunkSize = Math.ceil(wordlist.length / numChunks);
+        const chunks = [];
+        for (let i = 0; i < numChunks; i++) {
+            const start = i * chunkSize;
+            const end = start + chunkSize;
+            chunks.push(wordlist.slice(start, end));
+        }
+        return chunks;
+    }
+
+    /**
+     * Hybrid assignment: split or assign wordlists based on number of peers and wordlists
+     * @param {string} jobId - The cracking job ID
+     * @param {object} hashInfo - Hash info (hash_value, type, etc.)
+     * @param {Array<Array<string>>} wordlists - Array of wordlists to assign (can be 1 or many)
+     * @param {Array<string>} wordlistNames - Names of the wordlists (for tracking)
+     */
+    assignHybridToPeers(jobId, hashInfo, wordlists, wordlistNames) {
+        const peers = Array.from(this.peers.values()).filter(p => p.state === 'connected');
+        if (peers.length === 0) {
+            showNotification('No peers available for distributed cracking.', 'error');
+            return;
+        }
+        if (!Array.isArray(wordlists) || wordlists.length === 0) {
+            showNotification('No wordlists selected.', 'error');
+            return;
+        }
+        this.activeAssignments = {};
+        this.assignmentQueue = [];
+        // Case 1: Only one wordlist, split among peers
+        if (wordlists.length === 1 && peers.length > 1) {
+            const chunks = this.splitWordlist(wordlists[0], peers.length);
+            peers.forEach((peer, idx) => {
+                const assignment = {
+                    job_id: jobId,
+                    hash_info: hashInfo,
+                    wordlist_chunk: { passwords: chunks[idx], wordlist_name: wordlistNames ? wordlistNames[0] : undefined }
+                };
+                this.activeAssignments[peer.id] = assignment;
+                this.sendMessage(peer, { type: 'work_assignment', data: assignment });
+            });
+        } else if (wordlists.length <= peers.length) {
+            // Case 2: Multiple wordlists, enough peers
+            wordlists.forEach((wl, idx) => {
+                const peer = peers[idx % peers.length];
+                const assignment = {
+                    job_id: jobId,
+                    hash_info: hashInfo,
+                    wordlist_chunk: { passwords: wl, wordlist_name: wordlistNames ? wordlistNames[idx] : undefined }
+                };
+                this.activeAssignments[peer.id] = assignment;
+                this.sendMessage(peer, { type: 'work_assignment', data: assignment });
+            });
+        } else {
+            // Case 3: More wordlists than peers, assign one per peer, queue the rest
+            wordlists.forEach((wl, idx) => {
+                if (idx < peers.length) {
+                    const peer = peers[idx];
+                    const assignment = {
+                        job_id: jobId,
+                        hash_info: hashInfo,
+                        wordlist_chunk: { passwords: wl, wordlist_name: wordlistNames ? wordlistNames[idx] : undefined }
+                    };
+                    this.activeAssignments[peer.id] = assignment;
+                    this.sendMessage(peer, { type: 'work_assignment', data: assignment });
+                } else {
+                    // Queue extra wordlists
+                    this.assignmentQueue.push({
+                        job_id: jobId,
+                        hash_info: hashInfo,
+                        wordlist_chunk: { passwords: wl, wordlist_name: wordlistNames ? wordlistNames[idx] : undefined }
+                    });
+                }
+            });
+        }
+    }
+
+    /**
+     * When a peer finishes, assign them the next queued wordlist (if any)
+     * @param {string} peerId - The peer that finished
+     */
+    assignNextFromQueue(peerId) {
+        if (this.assignmentQueue && this.assignmentQueue.length > 0) {
+            const next = this.assignmentQueue.shift();
+            this.activeAssignments[peerId] = next;
+            const peer = this.peers.get(peerId);
+            if (peer) {
+                this.sendMessage(peer, { type: 'work_assignment', data: next });
+            }
+        }
+    }
+
+    /**
+     * Reassign unfinished work if a peer disconnects
+     * @param {string} jobId - The cracking job ID
+     * @param {string} failedPeerId - The peer that disconnected
+     */
+    reassignWork(jobId, failedPeerId) {
+        if (!this.activeAssignments || !this.activeAssignments[failedPeerId]) return;
+        const unfinished = this.activeAssignments[failedPeerId];
+        delete this.activeAssignments[failedPeerId];
+        // Find another available peer
+        const peers = Array.from(this.peers.values()).filter(p => p.state === 'connected');
+        if (peers.length === 0) return;
+        const peer = peers[Math.floor(Math.random() * peers.length)];
+        this.activeAssignments[peer.id] = unfinished;
+        this.sendMessage(peer, { type: 'work_assignment', data: unfinished });
+    }
+
+    /**
+     * Broadcast a stop signal to all peers for a given job
+     * @param {string} jobId - The cracking job ID
+     */
+    broadcastStopWork(jobId) {
+        this.broadcastMessage({ type: 'stop_work', data: { job_id: jobId } });
     }
 }
 
