@@ -753,3 +753,410 @@ function updateFileUploadDisplay(filename) {
         <small>Click to select a different file</small>
     `;
 }
+
+// --- Distributed Hash Cracking Entry Point ---
+// --- Wordlist Source Map ---
+const WORDLIST_SOURCES = {};
+
+// Update dropdown on page load
+function updateWordlistDropdown() {
+    const select = document.getElementById('wordlistSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    // Only user-uploaded wordlists will be added dynamically
+    if (select.options.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No wordlists available. Please upload.';
+        select.appendChild(opt);
+    }
+}
+document.addEventListener('DOMContentLoaded', updateWordlistDropdown);
+
+// --- Load wordlist (only user-uploaded) ---
+async function loadWordlistByKey(key) {
+    // Only user-uploaded wordlists are supported now
+    if (window.clientHashCracker && window.clientHashCracker.wordlists.has(key)) {
+        return window.clientHashCracker.wordlists.get(key);
+    }
+    showNotification('Wordlist not loaded: ' + key, 'error');
+    return [];
+}
+
+// --- Patch startCracking to use new loader ---
+window.startCracking = async function startCracking() {
+    const hashInput = document.getElementById('hashInput').value.trim();
+    const wordlistSelect = document.getElementById('wordlistSelect');
+    let selectedWordlists = [];
+    let wordlistNames = [];
+    if (wordlistSelect && wordlistSelect.multiple) {
+        selectedWordlists = Array.from(wordlistSelect.selectedOptions).map(opt => opt.value);
+        wordlistNames = selectedWordlists.slice();
+    } else if (wordlistSelect) {
+        selectedWordlists = [wordlistSelect.value];
+        wordlistNames = [wordlistSelect.value];
+    } else {
+        selectedWordlists = ['common'];
+        wordlistNames = ['common'];
+    }
+    const modeBtn = document.querySelector('.mode-btn.active');
+    const attackMode = modeBtn ? modeBtn.getAttribute('data-mode') : 'dictionary';
+
+    if (!hashInput) {
+        showNotification('Please enter a hash to crack.', 'error');
+        return;
+    }
+
+    // 2. Load all selected wordlists (local or remote)
+    let wordlists = [];
+    for (const name of selectedWordlists) {
+        const words = await loadWordlistByKey(name);
+        if (words.length) {
+            wordlists.push(words);
+        } else {
+            showNotification('Wordlist not loaded: ' + name, 'warning');
+        }
+    }
+    if (!wordlists.length || wordlists.every(wl => !wl.length)) {
+        showNotification('No valid wordlists selected.', 'error');
+        return;
+    }
+
+    // 3. Prepare job info
+    const jobId = 'job_' + Math.random().toString(36).substring(2, 10);
+    const hashInfo = {
+        hash_value: hashInput,
+        type: (window.clientHashCracker ? window.clientHashCracker.detectHashType(hashInput) : 'Unknown'),
+        mode: attackMode
+    };
+
+    // 4. Assign wordlists to peers using P2PManager (hybrid logic)
+    if (window.p2pManager && typeof window.p2pManager.assignHybridToPeers === 'function') {
+        window.p2pManager.assignHybridToPeers(jobId, hashInfo, wordlists, wordlistNames);
+        showNotification('Distributed cracking started!', 'info');
+    } else {
+        showNotification('P2P manager not initialized.', 'error');
+        return;
+    }
+
+    // 5. Track job and handle results (handled by onDistributedCrackResult)
+};
+
+// --- Distributed Cracking Result Callback ---
+window.onDistributedCrackResult = function(result) {
+    showNotification(`Hash cracked by network: ${result.plaintext}`, 'success');
+    // Update UI
+    document.getElementById('resultDisplay').style.display = 'block';
+    document.getElementById('originalHash').textContent = result.hash || '';
+    document.getElementById('crackedPassword').textContent = result.plaintext || '';
+    document.getElementById('timeTaken').textContent = (result.time_taken ? result.time_taken + 's' : '--');
+};
+
+// --- Distributed Cracking Progress Callback ---
+window.onDistributedCrackProgress = function(progressData) {
+    // progressData: { progress, attempts, speed, eta }
+    const progressBar = document.getElementById('mainProgress');
+    const progressLabel = document.getElementById('progressLabel');
+    const speedEl = document.getElementById('crackSpeed');
+    const etaEl = document.getElementById('crackETA');
+    const statusIndicator = document.getElementById('statusIndicator');
+    if (progressBar) progressBar.style.width = (progressData.progress || 0) + '%';
+    if (progressLabel) progressLabel.textContent = Math.round(progressData.progress || 0) + '%';
+    if (speedEl) speedEl.textContent = (progressData.speed || 0) + ' H/s';
+    if (etaEl) etaEl.textContent = progressData.eta || '--';
+    if (statusIndicator) {
+        statusIndicator.className = 'status-indicator cracking';
+        statusIndicator.innerHTML = '<span></span><span>Cracking...</span>';
+    }
+};
+
+// Reset Crack Hash UI
+function resetCrackUI() {
+    const progressBar = document.getElementById('mainProgress');
+    const progressLabel = document.getElementById('progressLabel');
+    const speedEl = document.getElementById('crackSpeed');
+    const etaEl = document.getElementById('crackETA');
+    const statusIndicator = document.getElementById('statusIndicator');
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressLabel) progressLabel.textContent = '0%';
+    if (speedEl) speedEl.textContent = '0 H/s';
+    if (etaEl) etaEl.textContent = '--';
+    if (statusIndicator) {
+        statusIndicator.className = 'status-indicator idle';
+        statusIndicator.innerHTML = '<span></span><span>Idle</span>';
+    }
+    const resultDisplay = document.getElementById('resultDisplay');
+    if (resultDisplay) resultDisplay.style.display = 'none';
+}
+
+// Hook up reset button
+const resetBtn = document.getElementById('resetCrackBtn');
+if (resetBtn) {
+    resetBtn.onclick = resetCrackUI;
+}
+
+// Patch P2PManager to call progress callback
+if (window.p2pManager) {
+    const origSendWorkProgress = window.p2pManager.sendWorkProgress;
+    window.p2pManager.sendWorkProgress = function(peer, jobId, progress, hashesChecked) {
+        if (typeof window.onDistributedCrackProgress === 'function') {
+            window.onDistributedCrackProgress({
+                progress: Math.min(progress * 100, 100),
+                attempts: hashesChecked,
+                speed: window.p2pManager.capabilities.max_speed || 0,
+                eta: '--' // ETA calculation can be improved
+            });
+        }
+        if (origSendWorkProgress) origSendWorkProgress.apply(this, arguments);
+    };
+}
+
+// --- Local Wordlist Upload for Multi-Select ---
+document.addEventListener('DOMContentLoaded', function() {
+    const localInput = document.getElementById('localWordlistInput');
+    const wordlistSelect = document.getElementById('wordlistSelect');
+    const localList = document.getElementById('localWordlistList');
+    if (localInput && wordlistSelect && localList) {
+        localInput.addEventListener('change', async function() {
+            const files = Array.from(localInput.files);
+            let added = [];
+            let idx = 0;
+            for (const file of files) {
+                try {
+                    if (!window.clientHashCracker) continue;
+                    const result = await window.clientHashCracker.loadWordlistFromFile(file);
+                    // Assign professional name
+                    let label = PROFESSIONAL_WORDLIST_NAMES[idx] || `Custom ${customWordlistCount++}`;
+                    idx++;
+                    // Store with professional name as key
+                    window.clientHashCracker.wordlists.set(label, result.count ? result.words : result);
+                    added.push(label);
+                } catch (e) {
+                    showNotification('Failed to load wordlist: ' + file.name, 'error');
+                }
+            }
+            updateWordlistDropdown();
+            if (added.length) {
+                localList.textContent = 'Added: ' + added.join(', ');
+            }
+        });
+    }
+});
+
+// --- Dashboard Stats Fetch and Update ---
+async function loadDashboardStats() {
+    try {
+        const stats = await apiCall('/dashboard_stats', 'GET');
+        if (stats) {
+            const hashes = document.getElementById('totalHashes');
+            const nodes = document.getElementById('activeNodes');
+            const speed = document.getElementById('totalSpeed');
+            if (hashes) hashes.textContent = stats.hashes_cracked;
+            if (nodes) nodes.textContent = stats.active_nodes;
+            if (speed) speed.textContent = (stats.network_speed || 0) + ' H/s';
+        }
+    } catch (e) {
+        // Optionally show a warning
+    }
+}
+
+// Periodically refresh dashboard stats
+setInterval(() => {
+    const homeSection = document.getElementById('home');
+    if (homeSection && homeSection.style.display !== 'none') {
+        loadDashboardStats();
+    }
+}, 10000);
+
+// Load stats when showing home section
+const origShowSection = showSection;
+showSection = function(sectionName) {
+    origShowSection(sectionName);
+    if (sectionName === 'home') {
+        loadDashboardStats();
+    }
+};
+
+// --- Global Wordlists Fetch and Display ---
+async function loadGlobalWordlists() {
+    try {
+        const wordlists = await apiCall('/list_wordlists', 'GET');
+        const grid = document.getElementById('popularWordlistsGrid');
+        if (grid) {
+            grid.innerHTML = '';
+            if (Array.isArray(wordlists) && wordlists.length > 0) {
+                wordlists.forEach(wl => {
+                    const card = document.createElement('div');
+                    card.className = 'wordlist-card';
+                    card.innerHTML = `
+                        <div class="wordlist-info">
+                            <h4>${wl.filename}</h4>
+                            <p>Uploaded: ${new Date(wl.upload_time).toLocaleString()}</p>
+                            <span class="size">${(wl.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                        <button class="btn-primary" onclick="downloadWordlistById('${wl.id}')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    `;
+                    grid.appendChild(card);
+                });
+            } else {
+                grid.innerHTML = '<div style="color:#888;padding:1em;">No global wordlists found.</div>';
+            }
+        }
+    } catch (e) {
+        // Optionally show a warning
+    }
+}
+
+window.downloadWordlistById = function(wordlistId) {
+    window.open(`/api/download_wordlist/${wordlistId}`, '_blank');
+};
+
+// Load global wordlists when showing wordlists section
+const origShowSectionWordlists = showSection;
+showSection = function(sectionName) {
+    origShowSectionWordlists(sectionName);
+    if (sectionName === 'wordlists') {
+        loadGlobalWordlists();
+    }
+};
+
+// --- Results Fetch, Display, and Store ---
+async function loadResults() {
+    try {
+        const results = await apiCall('/list_results', 'GET');
+        const tbody = document.getElementById('resultsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            if (Array.isArray(results) && results.length > 0) {
+                // Get filter values
+                const engineFilter = document.getElementById('filterEngine')?.value || '';
+                const hashTypeFilter = document.getElementById('filterHashType')?.value || '';
+                const search = document.getElementById('searchResults')?.value?.toLowerCase() || '';
+                results.filter(r => {
+                    let ok = true;
+                    if (engineFilter && r.engine !== engineFilter) ok = false;
+                    if (hashTypeFilter && r.type !== hashTypeFilter) ok = false;
+                    if (search && !(r.hash?.toLowerCase().includes(search) || r.password?.toLowerCase().includes(search))) ok = false;
+                    return ok;
+                }).forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${r.hash || ''}</td>
+                        <td>${r.type || ''}</td>
+                        <td>${r.password || ''}</td>
+                        <td>${r.engine || ''}</td>
+                        <td>${r.time || ''}</td>
+                        <td>${r.date ? new Date(r.date).toLocaleString() : ''}</td>
+                        <td><button class="btn-icon" onclick="copyToClipboardText('${r.password || ''}')"><i class="fas fa-copy"></i></button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" style="color:#888;text-align:center;">No results found.</td></tr>';
+            }
+        }
+    } catch (e) {
+        // Optionally show a warning
+    }
+}
+
+window.copyToClipboardText = function(text) {
+    navigator.clipboard.writeText(text);
+    showNotification('Copied to clipboard!', 'success');
+};
+
+// Store result when cracked
+window.onDistributedCrackResult = async function(result) {
+    showNotification(`Hash cracked by network: ${result.plaintext}`, 'success');
+    // Update UI
+    document.getElementById('resultDisplay').style.display = 'block';
+    document.getElementById('originalHash').textContent = result.hash || '';
+    document.getElementById('crackedPassword').textContent = result.plaintext || '';
+    document.getElementById('timeTaken').textContent = (result.time_taken ? result.time_taken + 's' : '--');
+    // Store in backend
+    try {
+        await apiCall('/store_result', 'POST', {
+            hash: result.hash,
+            type: result.hashType || result.type,
+            password: result.plaintext,
+            engine: result.engine_used || 'distributed',
+            time: result.time_taken
+        });
+    } catch (e) {}
+    // Refresh results
+    loadResults();
+};
+
+// Load results when showing results section
+const origShowSectionResults = showSection;
+showSection = function(sectionName) {
+    origShowSectionResults(sectionName);
+    if (sectionName === 'results') {
+        loadResults();
+        // Add filter listeners
+        document.getElementById('filterEngine')?.addEventListener('change', loadResults);
+        document.getElementById('filterHashType')?.addEventListener('change', loadResults);
+        document.getElementById('searchResults')?.addEventListener('input', loadResults);
+    }
+};
+
+// --- Professional Wordlist Naming ---
+const PROFESSIONAL_WORDLIST_NAMES = ['rockyou', '100k most common', '10k most common'];
+let customWordlistCount = 1;
+
+function updateWordlistDropdown() {
+    const select = document.getElementById('wordlistSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    if (window.clientHashCracker && window.clientHashCracker.wordlists.size > 0) {
+        let idx = 0;
+        window.clientHashCracker.wordlists.forEach((words, key) => {
+            let label = PROFESSIONAL_WORDLIST_NAMES[idx] || `Custom ${customWordlistCount++}`;
+            idx++;
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = label;
+            select.appendChild(opt);
+        });
+    } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No wordlists available. Please upload.';
+        select.appendChild(opt);
+    }
+}
+document.addEventListener('DOMContentLoaded', updateWordlistDropdown);
+
+// Patch local wordlist upload logic to use professional names
+const localInput = document.getElementById('localWordlistInput');
+const wordlistSelect = document.getElementById('wordlistSelect');
+const localList = document.getElementById('localWordlistList');
+if (localInput && wordlistSelect && localList) {
+    localInput.addEventListener('change', async function() {
+        const files = Array.from(localInput.files);
+        let added = [];
+        let idx = 0;
+        // Clear previous mapping to keep order consistent
+        window.clientHashCracker.wordlists = new Map();
+        customWordlistCount = 1;
+        for (const file of files) {
+            try {
+                if (!window.clientHashCracker) continue;
+                const result = await window.clientHashCracker.loadWordlistFromFile(file);
+                // Assign professional name
+                let label = PROFESSIONAL_WORDLIST_NAMES[idx] || `Custom ${customWordlistCount++}`;
+                idx++;
+                window.clientHashCracker.wordlists.set(label, result.count ? result.words : result);
+                added.push(label);
+            } catch (e) {
+                showNotification('Failed to load wordlist: ' + file.name, 'error');
+            }
+        }
+        updateWordlistDropdown();
+        if (added.length) {
+            localList.textContent = 'Added: ' + added.join(', ');
+        }
+    });
+}
