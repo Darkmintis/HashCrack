@@ -756,28 +756,55 @@ function updateFileUploadDisplay(filename) {
 
 // --- Distributed Hash Cracking Entry Point ---
 // --- Wordlist Source Map ---
-const WORDLIST_SOURCES = {};
+// --- Split Wordlist Support ---
+const WORDLIST_SOURCES = {
+    rockyou: {
+        type: 'split',
+        parts: ['wordlists/rockyou-part1.txt', 'wordlists/rockyou-part2.txt'],
+        label: 'rockyou'
+    }
+};
 
-// Update dropdown on page load
 function updateWordlistDropdown() {
     const select = document.getElementById('wordlistSelect');
     if (!select) return;
     select.innerHTML = '';
-    // Only user-uploaded wordlists will be added dynamically
-    if (select.options.length === 0) {
+    // Only show 'rockyou' if both parts exist
+    fetch(WORDLIST_SOURCES.rockyou.parts[0]).then(r1 => {
+        if (!r1.ok) throw new Error();
+        return fetch(WORDLIST_SOURCES.rockyou.parts[1]);
+    }).then(r2 => {
+        if (!r2.ok) throw new Error();
+        const opt = document.createElement('option');
+        opt.value = 'rockyou';
+        opt.textContent = 'rockyou';
+        select.appendChild(opt);
+    }).catch(() => {
         const opt = document.createElement('option');
         opt.value = '';
         opt.textContent = 'No wordlists available. Please upload.';
         select.appendChild(opt);
-    }
+    });
 }
 document.addEventListener('DOMContentLoaded', updateWordlistDropdown);
 
-// --- Load wordlist (only user-uploaded) ---
+// --- Load wordlist (split support) ---
 async function loadWordlistByKey(key) {
-    // Only user-uploaded wordlists are supported now
-    if (window.clientHashCracker && window.clientHashCracker.wordlists.has(key)) {
-        return window.clientHashCracker.wordlists.get(key);
+    const src = WORDLIST_SOURCES[key];
+    if (!src) return [];
+    if (src.type === 'split') {
+        let allWords = [];
+        for (const part of src.parts) {
+            try {
+                const res = await fetch(part);
+                if (!res.ok) throw new Error('Failed to load part');
+                const text = await res.text();
+                allWords = allWords.concat(text.split('\n').map(w => w.trim()).filter(Boolean));
+            } catch (e) {
+                showNotification('Error loading part: ' + part, 'error');
+            }
+        }
+        return allWords;
     }
     showNotification('Wordlist not loaded: ' + key, 'error');
     return [];
