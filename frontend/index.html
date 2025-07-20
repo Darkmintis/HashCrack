@@ -136,14 +136,21 @@
                         </div>
                         
                         <div class="input-group">
-                            <label for="wordlistSelect">Wordlist Strategy</label>
-                            <select id="wordlistSelect" class="select-field">
+                            <label for="wordlistSelect">Wordlist Strategy <span style="font-size:0.9em;color:#888;">(multi-select supported)</span></label>
+                            <select id="wordlistSelect" class="select-field" multiple size="5">
                                 <option value="auto">Auto-Select Optimal</option>
                                 <option value="rockyou">RockYou (14M passwords)</option>
                                 <option value="common">Common Passwords</option>
                                 <option value="ctf">CTF-Specific</option>
                                 <option value="custom">Upload Custom</option>
                             </select>
+                            <div style="margin-top:8px;">
+                                <input type="file" id="localWordlistInput" accept=".txt,.lst,.dic" style="display:none;" multiple>
+                                <button class="btn-secondary small" type="button" onclick="document.getElementById('localWordlistInput').click()">
+                                    <i class="fas fa-upload"></i> Add Local Wordlist(s)
+                                </button>
+                                <div id="localWordlistList" style="margin-top:4px;font-size:0.95em;color:#555;"></div>
+                            </div>
                         </div>
                         
                         <div class="input-group">
@@ -775,7 +782,7 @@
                     <div class="api-overview">
                         <div class="api-card">
                             <h3>RESTful API</h3>
-                            <p>Full HTTP API for hash cracking, team management, and wordlist operations</p>
+                            <p>Full HTTP API for hash cracking, team management, and wordlist/result operations</p>
                             <div class="api-endpoints">
                                 <div class="endpoint">
                                     <span class="method post">POST</span>
@@ -793,9 +800,44 @@
                                     <span class="description">Create team room</span>
                                 </div>
                                 <div class="endpoint">
+                                    <span class="method post">POST</span>
+                                    <span class="path">/api/join_team</span>
+                                    <span class="description">Join team room</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method get">GET</span>
+                                    <span class="path">/api/team/{team_id}/members</span>
+                                    <span class="description">List team members</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method post">POST</span>
+                                    <span class="path">/api/upload_wordlist</span>
+                                    <span class="description">Upload a wordlist file</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method get">GET</span>
+                                    <span class="path">/api/download_wordlist/{wordlist_id}</span>
+                                    <span class="description">Download a wordlist file</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method get">GET</span>
+                                    <span class="path">/api/list_wordlists</span>
+                                    <span class="description">List all uploaded wordlists</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method post">POST</span>
+                                    <span class="path">/api/store_result</span>
+                                    <span class="description">Store a cracking result</span>
+                                </div>
+                                <div class="endpoint">
+                                    <span class="method get">GET</span>
+                                    <span class="path">/api/list_results</span>
+                                    <span class="description">List all cracking results</span>
+                                </div>
+                                <div class="endpoint">
                                     <span class="method ws">WS</span>
                                     <span class="path">/socket.io</span>
-                                    <span class="description">Real-time updates</span>
+                                    <span class="description">Real-time updates (WebSocket)</span>
                                 </div>
                             </div>
                         </div>
