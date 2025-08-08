@@ -12,332 +12,6 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
-    
-    <style>
-        /* Enhanced styles for the professional CTF tool */
-        .ultimate-platform {
-            background: #f5f7fa;
-            min-height: 100vh;
-        }
-        
-        .platform-header {
-            text-align: center;
-            padding: 2rem 0;
-            color: #333;
-        }
-        
-        .platform-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
-        
-        .platform-subtitle {
-            font-size: 1.4rem;
-            opacity: 0.8;
-            margin-bottom: 0;
-        }
-        
-        /* Professional styling for CTF tool */
-        .section-header {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .section-header i {
-            color: #1976d2;
-        }
-        
-        .info-badge {
-            display: inline-block;
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
-        }
-        
-        .terminal-style {
-            font-family: 'Courier New', monospace;
-            background: #282c34;
-            color: #abb2bf;
-            padding: 1rem;
-            border-radius: 8px;
-            overflow-x: auto;
-        }
-        
-        .terminal-style .highlight {
-            color: #98c379;
-        }
-        
-        .terminal-style .error {
-            color: #e06c75;
-        }
-        
-        .crack-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-top: 2rem;
-        }
-        
-        .input-group {
-            margin-bottom: 2rem;
-        }
-        
-        .input-label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-size: 1.1rem;
-        }
-        
-        .hash-input {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-        
-        .hash-input:focus {
-            outline: none;
-            border-color: #1976d2;
-            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
-        }
-        
-        .wordlist-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .wordlist-built-in {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .wordlist-upload {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .wordlist-select {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-        
-        .file-upload-area {
-            border: 2px dashed #ced4da;
-            padding: 2rem;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 0.5rem;
-            transition: all 0.3s ease;
-        }
-        
-        .file-upload-area:hover {
-            background: #f1f3f5;
-            border-color: #adb5bd;
-        }
-        
-        .crack-button {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            background: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        
-        .crack-button:hover {
-            background: #1565c0;
-        }
-        
-        .crack-button:disabled {
-            background: #90caf9;
-            cursor: not-allowed;
-        }
-        
-        .progress-section {
-            display: none;
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .progress-section.active {
-            display: block;
-        }
-        
-        .progress-bar-container {
-            height: 12px;
-            background: #e9ecef;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(to right, #1976d2, #64b5f6);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .progress-status {
-            font-size: 0.9rem;
-            color: #666;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .progress-label {
-            font-weight: 600;
-        }
-        
-        .results-section {
-            margin-top: 2rem;
-        }
-        
-        .result-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #1976d2;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        
-        .result-card.success {
-            border-left: 4px solid #28a745;
-        }
-        
-        .result-hash {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 0.5rem;
-            word-break: break-all;
-        }
-        
-        .result-password {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #28a745;
-            margin-bottom: 0.5rem;
-        }
-        
-        .result-details {
-            font-size: 0.9rem;
-            color: #666;
-        }
-        
-        .notification {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 1000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            max-width: 400px;
-            word-wrap: break-word;
-        }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification.success { background: #28a745; }
-        .notification.error { background: #dc3545; }
-        .notification.warning { background: #ffc107; color: #333; }
-        .notification.info { background: #17a2b8; }
-        
-        .hash-detection {
-            margin-top: 0.5rem;
-            padding: 0.5rem;
-            background: #e3f2fd;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            color: #1976d2;
-        }
-        
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1976d2;
-            display: block;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.5rem;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .platform-title { font-size: 2.5rem; }
-            .platform-subtitle { font-size: 1.2rem; }
-            .crack-container { margin: 1rem; padding: 1.5rem; }
-            .wordlist-section { grid-template-columns: 1fr; gap: 1rem; }
-            .stats-row { grid-template-columns: 1fr 1fr; }
-            .notification { right: 1rem; left: 1rem; max-width: none; }
-        }
-    </style>
 </head>
 <body class="ultimate-platform">
     <!-- Platform Header -->
@@ -374,7 +48,7 @@
                    class="hash-input" 
                    placeholder="Enter MD5, SHA1, SHA256, SHA512, or other hash..."
                    autocomplete="off">
-            <div id="hashDetection" class="hash-detection" style="display: none;"></div>
+            <div id="hashDetection" class="hash-detection"></div>
         </div>
 
         <!-- Wordlist Selection -->
@@ -390,7 +64,7 @@
                     <option value="rockyou1">RockYou Part 1</option>
                     <option value="rockyou2">RockYou Part 2</option>
                 </select>
-                <small style="color: #666; margin-top: 0.5rem; display: block;">
+                <small class="wordlist-help">
                     Hold Ctrl/Cmd to select multiple wordlists
                 </small>
             </div>
@@ -401,12 +75,12 @@
                     <i class="fas fa-upload"></i> Custom Wordlist
                 </label>
                 <div class="file-upload-area" id="fileUploadArea">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #ccc; margin-bottom: 1rem;"></i>
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
                     <div>Drop your wordlist here or click to browse</div>
-                    <small style="color: #666;">Supports .txt files up to 500MB</small>
-                    <input type="file" id="wordlistFile" accept=".txt" style="display: none;">
+                    <small class="upload-limit">Supports .txt files up to 500MB</small>
+                    <input type="file" id="wordlistFile" accept=".txt" class="hidden-file-input">
                 </div>
-                <div id="uploadStatus" style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;"></div>
+                <div id="uploadStatus" class="upload-status"></div>
             </div>
         </div>
 
@@ -425,10 +99,15 @@
 
         <!-- Results Section -->
         <div id="resultsSection" class="results-section">
-            <h3 style="margin-top: 2rem; color: #333;">
+            <h3>
                 <i class="fas fa-trophy"></i> Cracking Results
+                <span id="resultCount" class="info-badge">0</span>
             </h3>
             <div id="resultsContainer"></div>
+            <div id="noResultsMessage" class="no-results">
+                <i class="fas fa-info-circle"></i>
+                <p>No cracking results yet. Enter a hash above and click "Start Cracking" to begin.</p>
+            </div>
         </div>
     </div>
 

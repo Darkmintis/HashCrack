@@ -19,6 +19,7 @@ const AppState = {
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    setupFileUpload();
 });
 
 function initializeApp() {
@@ -30,6 +31,9 @@ function initializeApp() {
     // Initialize UI
     updateStats();
     updateResultsDisplay();
+    
+    // Set up real-time hash detection
+    setupHashDetection();
     
     // Check if CryptoJS and hash cracker are loaded
     if (typeof CryptoJS === 'undefined') {
@@ -45,6 +49,192 @@ function initializeApp() {
     }
     
     console.log('[SUCCESS] All dependencies loaded successfully');
+}
+
+// Add real-time hash detection
+function setupHashDetection() {
+    const hashInput = document.getElementById('hashInput');
+    const hashDetection = document.getElementById('hashDetection');
+    
+    if (!hashInput || !hashDetection) return;
+    
+    // Detect hash type on input
+    let typingTimer;
+    hashInput.addEventListener('input', () => {
+        clearTimeout(typingTimer);
+        
+        // Hide detection if input is short
+        if (hashInput.value.length < 16) {
+            hashDetection.style.display = 'none';
+            return;
+        }
+        
+        // Wait for user to stop typing
+        typingTimer = setTimeout(() => {
+            const hash = hashInput.value.trim();
+            if (hash && window.hashCracker) {
+                const detection = window.hashCracker.detectHashType(hash);
+                
+                if (detection.confidence > 50) {
+                    hashDetection.innerHTML = `
+                        <i class="fas fa-check-circle"></i> 
+                        Detected <strong>${detection.type}</strong> hash 
+                        (${detection.confidence}% confidence)
+                    `;
+                    hashDetection.style.display = 'block';
+                } else {
+                    hashDetection.innerHTML = `
+                        <i class="fas fa-question-circle"></i>
+                        Unknown hash format
+                    `;
+                    hashDetection.style.display = 'block';
+                }
+            } else {
+                hashDetection.style.display = 'none';
+            }
+        }, 500);
+    });
+}
+
+// Setup file upload handling for wordlists
+function setupFileUpload() {
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('wordlistFile');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const wordlistSelect = document.getElementById('wordlistSelect');
+    
+    if (!fileUploadArea || !fileInput || !uploadStatus || !wordlistSelect) return;
+    
+    // Click on upload area to trigger file input
+    fileUploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // Drag and drop handling
+    fileUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', () => {
+        fileUploadArea.classList.remove('dragover');
+    });
+    
+    fileUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        
+        if (e.dataTransfer.files.length) {
+            handleWordlistFile(e.dataTransfer.files[0]);
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            handleWordlistFile(fileInput.files[0]);
+        }
+    });
+    
+    // Process wordlist file with efficient chunking for large files
+    function handleWordlistFile(file) {
+        if (!file) return;
+        
+        // Validate file type and size
+        if (!file.name.toLowerCase().endsWith('.txt')) {
+            showNotification('Please upload a .txt file', 'error');
+            return;
+        }
+        
+        const maxSize = 500 * 1024 * 1024; // 500MB
+        if (file.size > maxSize) {
+            showNotification(`File too large (max ${maxSize/1024/1024}MB)`, 'error');
+            return;
+        }
+        
+        uploadStatus.textContent = 'Processing wordlist...';
+        
+        // Process file in chunks for better performance with large files
+        const customWordlistName = `custom_${Date.now()}`;
+        let words = [];
+        let loadedChunks = 0;
+        let wordCount = 0;
+        
+        // Use FileReader with chunking for better memory performance
+        const chunkSize = 10 * 1024 * 1024; // 10MB chunks
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        
+        function readNextChunk(start) {
+            if (start >= file.size) {
+                // All chunks read, finalize
+                finishWordlistProcessing(customWordlistName, words);
+                return;
+            }
+            
+            loadedChunks++;
+            uploadStatus.textContent = `Processing ${Math.round((loadedChunks / totalChunks) * 100)}%...`;
+            
+            const chunk = file.slice(start, start + chunkSize);
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const text = e.target.result;
+                // Process chunk
+                const chunkWords = text.split(/\r?\n/)
+                    .map(word => word.trim())
+                    .filter(word => word.length > 0);
+                
+                // Add unique words to the list
+                words = [...words, ...chunkWords];
+                wordCount += chunkWords.length;
+                
+                // Read next chunk
+                readNextChunk(start + chunkSize);
+            };
+            
+            reader.onerror = function() {
+                uploadStatus.textContent = 'Error reading file';
+                showNotification('Failed to read wordlist file', 'error');
+            };
+            
+            reader.readAsText(chunk);
+        }
+        
+        // Start reading chunks
+        readNextChunk(0);
+    }
+    
+    function finishWordlistProcessing(customWordlistName, words) {
+        // Remove duplicates for efficiency
+        const uniqueWords = [...new Set(words)];
+        
+        // Store in memory and localStorage (if small enough)
+        AppState.customWordlists.set(customWordlistName, uniqueWords);
+        
+        try {
+            // Only store in localStorage if small enough (< 5MB)
+            if (JSON.stringify(uniqueWords).length < 5 * 1024 * 1024) {
+                localStorage.setItem(`wordlist_${customWordlistName}`, JSON.stringify(uniqueWords));
+            }
+        } catch (e) {
+            console.warn('[STORAGE] Could not save wordlist to localStorage:', e);
+        }
+        
+        // Add to select dropdown
+        const option = document.createElement('option');
+        option.value = customWordlistName;
+        option.textContent = `Custom (${uniqueWords.length.toLocaleString()} words)`;
+        option.selected = true;
+        wordlistSelect.appendChild(option);
+        
+        uploadStatus.textContent = `Loaded ${uniqueWords.length.toLocaleString()} unique words`;
+        showNotification(`Custom wordlist loaded with ${uniqueWords.length.toLocaleString()} words`, 'success');
+        
+        // Add to hash cracker
+        if (window.hashCracker) {
+            window.hashCracker.addWordlist(customWordlistName, uniqueWords);
+        }
+    }
 }
 
 // Main hash cracking function
@@ -121,14 +311,15 @@ window.startCracking = async function startCracking() {
         }
         
         if (allWords.length === 0) {
-            throw new Error('No wordlists could be loaded');
+            throw new Error('No wordlists could be loaded or all wordlists are empty');
         }
         
         // Remove duplicates and filter
+        const originalCount = allWords.length;
         allWords = [...new Set(allWords)].filter(word => word && word.trim());
-        console.log(`[WORDLIST] Total unique words: ${allWords.length}`);
+        console.log(`[WORDLIST] Total unique words: ${allWords.length} (removed ${originalCount - allWords.length} duplicates/empty entries)`);
         
-        updateProgress(20, `Loaded ${allWords.length.toLocaleString()} passwords`);
+        updateProgress(20, `Loaded ${allWords.length.toLocaleString()} unique passwords`);
         
         // Progress callback
         const progressCallback = (progress, status, attempts) => {
@@ -160,7 +351,8 @@ window.startCracking = async function startCracking() {
                 attempts: result.attempts || 0,
                 time: timeTaken,
                 timestamp: new Date().toISOString(),
-                wordlists: selectedOptions.map(opt => opt.textContent)
+                wordlists: selectedOptions.map(opt => opt.textContent),
+                found: true
             };
             
             addResult(newResult);
@@ -169,9 +361,25 @@ window.startCracking = async function startCracking() {
             
         } else {
             // Not found
-            showNotification('Hash not found in selected wordlists', 'warning');
-            updateProgress(100, `Not found (${result.attempts?.toLocaleString() || 0} attempts)`);
+            const attemptStr = result.attempts?.toLocaleString() || 0;
+            const failureMessage = `No match found after trying ${attemptStr} passwords`;
+            showNotification(failureMessage, 'warning');
+            updateProgress(100, failureMessage);
             console.log(`[FAILURE] Hash not found after ${result.attempts} attempts in ${timeTaken}ms`);
+            
+            // Store result as "not found" for reference
+            const newResult = {
+                hash: hashInput,
+                password: 'No match found',
+                type: hashType.type,
+                attempts: result.attempts || 0,
+                time: timeTaken,
+                timestamp: new Date().toISOString(),
+                wordlists: selectedOptions.map(opt => opt.textContent),
+                found: false
+            };
+            
+            addResult(newResult);
         }
         
     } catch (error) {
@@ -299,26 +507,65 @@ function updateStats() {
 function updateResultsDisplay() {
     const resultsContainer = document.getElementById('resultsContainer');
     const resultsSection = document.getElementById('resultsSection');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const resultCount = document.getElementById('resultCount');
     
     if (!resultsContainer || !resultsSection) return;
     
+    // Update the result count badge
+    if (resultCount) {
+        resultCount.textContent = AppState.results.length;
+    }
+    
     if (AppState.results.length === 0) {
-        resultsSection.classList.remove('has-results');
+        // Show the no results message
+        if (noResultsMessage) {
+            noResultsMessage.style.display = 'flex';
+        }
+        resultsContainer.innerHTML = '';
         return;
     }
     
-    resultsSection.classList.add('has-results');
+    // Hide the no results message
+    if (noResultsMessage) {
+        noResultsMessage.style.display = 'none';
+    }
     
     resultsContainer.innerHTML = AppState.results.map(result => {
         const date = new Date(result.timestamp).toLocaleString();
-        const shortHash = result.hash.length > 50 ? result.hash.substring(0, 50) + '...' : result.hash;
+        
+        // Format hash with proper handling for different lengths
+        const hashDisplay = result.hash.length > 50 
+            ? `${result.hash.substring(0, 50)}...` 
+            : result.hash;
+        
+        // Format time to be more human-readable
+        const timeDisplay = result.time < 1000 
+            ? `${result.time}ms` 
+            : `${(result.time / 1000).toFixed(2)}s`;
+            
+        // Determine success or failure styling
+        const isSuccess = result.found !== false;
+        const resultClass = isSuccess ? 'success' : 'failure';
+        const passwordClass = isSuccess ? 'found' : 'not-found';
         
         return `
-            <div class="result-item">
-                <div class="result-hash">${shortHash}</div>
-                <div class="result-password"><strong>${result.password}</strong></div>
+            <div class="result-item ${resultClass}">
+                <div class="result-hash" title="${result.hash}">${hashDisplay}</div>
+                <div class="result-password ${passwordClass}">${result.password}</div>
                 <div class="result-details">
-                    ${result.type} • ${result.attempts?.toLocaleString() || 0} attempts • ${result.time}ms • ${date}
+                    <div class="result-detail-item">
+                        <i class="fas fa-fingerprint"></i> ${result.type}
+                    </div>
+                    <div class="result-detail-item">
+                        <i class="fas fa-tachometer-alt"></i> ${result.attempts?.toLocaleString() || 0} attempts
+                    </div>
+                    <div class="result-detail-item">
+                        <i class="fas fa-clock"></i> ${timeDisplay}
+                    </div>
+                    <div class="result-detail-item">
+                        <i class="fas fa-calendar-alt"></i> ${date}
+                    </div>
                 </div>
             </div>
         `;
