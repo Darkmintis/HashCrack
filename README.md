@@ -1,15 +1,17 @@
 # HashCrack
 
-Client-side hash cracking tool for CTF players and security professionals.
+Professional client-side hash cracking tool for CTF players and security professionals. Designed as a web-based alternative to tools like John the Ripper and Hashcat for quick hash cracking during CTF competitions.
 
 ## Features
 
-- **Client-side processing**: All computation happens in your browser
+- **100% Client-side**: All processing happens in your browser - no server needed
+- **CTF Ready**: Optimized for speed and efficiency during CTF competitions
+- **Multi-threaded**: Uses Web Workers for parallel processing across CPU cores
 - **Multiple hash algorithms**: MD5, SHA1, SHA256, SHA512, SHA224, SHA384
 - **Built-in wordlists**: 10K, 100K, and RockYou wordlists included
 - **Custom wordlist support**: Upload your own wordlists (.txt files)
-- **Multi-threaded**: Uses Web Workers for parallel processing
 - **Real-time progress**: Live status updates and attempt counters
+- **Results history**: Track previously cracked hashes
 
 ## Supported Hash Types
 

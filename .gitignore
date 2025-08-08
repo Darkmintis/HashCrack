@@ -1,46 +1,24 @@
-# HashCrack .gitignore
+# HashCrack - Professional Hash Cracking Tool for CTF Players
+# .gitignore file
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Temporary files
+temp_*.txt
+*.pot
+*.log
 
-# Virtual Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# Cache and session directories
+cache/
+results/
+sessions/
 
-# IDE
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS specific files
 .DS_Store
 .DS_Store?
 ._*
@@ -49,31 +27,5 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-temp_*.txt
-*.pot
-*.log
-cache/
-results/
-sessions/
-
-# Security - Never commit these
-config/secrets.json
-*.key
-*.pem
-api_keys.txt
-
-# Large files
-*.gz
-*.zip
-*.7z
-*.rar
-
-# Test outputs
+# Test files
 test_results/
-coverage/
-.coverage
-.pytest_cache/
-
-# Documentation builds
-docs/_build/
-site/
