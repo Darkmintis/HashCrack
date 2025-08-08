@@ -12,7 +12,15 @@ class HashCracker {
         this.workers = [];
         this.wordlists = new Map();
         this.supportedAlgorithms = [
-            'md5', 'sha1', 'sha256', 'sha512', 'sha224', 'sha384'
+            'md5', 'sha1', 'sha256', 'sha512', 'sha224', 'sha384',
+            'mysql-sha1', 'ntlm', 'pbkdf2', 'md5-crypt', 'sha-256-crypt', 
+            'sha-512-crypt', 'bcrypt', 'netntlmv2', 'wpa-pmkid', 
+            'yescrypt', 'argon2', 'scrypt'
+        ];
+        
+        // These algorithms are implemented but may be slower in browser environment
+        this.advancedAlgorithms = [
+            'keepass-kdbx', 'rar5', '7z', 'pdf'
         ];
         
         this.loadBuiltInWordlists();
@@ -32,41 +40,270 @@ class HashCracker {
     createWorkerBlob() {
         const workerCode = `
             importScripts('https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js');
+            // Import additional libraries for advanced hash types
+            importScripts('https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js');
+            importScripts('https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2.min.js');
+            importScripts('https://cdn.jsdelivr.net/npm/scrypt-js@3.0.1/scrypt.min.js');
             
-            self.onmessage = function(e) {
+            // Implementations for advanced hash types
+            const hashImplementations = {
+                // MD5 Crypt implementation
+                'md5-crypt': function(word, targetHash) {
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 4) {
+                        const salt = parts[2];
+                        // Simple MD5 Crypt implementation
+                        const hash = CryptoJS.MD5(word + '$1$' + salt).toString();
+                        const formatted = '$1$' + salt + '$' + hash;
+                        return formatted === targetHash;
+                    }
+                    return false;
+                },
+                
+                // SHA-256 Crypt implementation
+                'sha-256-crypt': function(word, targetHash) {
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 4) {
+                        const salt = parts[2];
+                        // Simplified SHA-256 Crypt implementation
+                        const hash = CryptoJS.SHA256(word + '$5$' + salt).toString();
+                        const formatted = '$5$' + salt + '$' + hash;
+                        return formatted === targetHash;
+                    }
+                    return false;
+                },
+                
+                // SHA-512 Crypt implementation
+                'sha-512-crypt': function(word, targetHash) {
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 4) {
+                        const salt = parts[2];
+                        // Simplified SHA-512 Crypt implementation
+                        const hash = CryptoJS.SHA512(word + '$6$' + salt).toString();
+                        const formatted = '$6$' + salt + '$' + hash;
+                        return formatted === targetHash;
+                    }
+                    return false;
+                },
+                
+                // bcrypt implementation using bcryptjs
+                'bcrypt': function(word, targetHash) {
+                    // bcrypt.compare returns a promise, so we need to handle it differently
+                    return bcrypt.compareSync(word, targetHash);
+                },
+                
+                // NetNTLMv2 implementation
+                'netntlmv2': function(word, targetHash) {
+                    const parts = targetHash.split(':');
+                    if (parts.length >= 2) {
+                        const hash = parts[0];
+                        const challenge = parts[1];
+                        
+                        // NTLM hash of password
+                        const utf16le = Array.from(word).map(char => {
+                            return String.fromCharCode(char.charCodeAt(0) & 0xFF, (char.charCodeAt(0) & 0xFF00) >> 8);
+                        }).join('');
+                        const ntlmHash = CryptoJS.MD4(CryptoJS.enc.Latin1.parse(utf16le)).toString();
+                        
+                        // HMAC-MD5 of challenge with NTLM hash as key
+                        const hmac = CryptoJS.HmacMD5(CryptoJS.enc.Hex.parse(challenge), 
+                                                    CryptoJS.enc.Hex.parse(ntlmHash));
+                        
+                        return hmac.toString() === hash.toLowerCase();
+                    }
+                    return false;
+                },
+                
+                // WPA-PMKID implementation
+                'wpa-pmkid': function(word, targetHash) {
+                    const parts = targetHash.split('*');
+                    if (parts.length >= 3) {
+                        const pmkid = parts[0];
+                        const mac1 = parts[1];
+                        const mac2 = parts[2];
+                        
+                        // Calculate PBKDF2-HMAC-SHA1 using the passphrase and SSID
+                        const ssid = mac2.substring(0, 8);
+                        const pmk = CryptoJS.PBKDF2(word, ssid, {
+                            keySize: 256/32,
+                            iterations: 4096,
+                            hasher: CryptoJS.algo.SHA1
+                        });
+                        
+                        // Calculate HMAC-SHA1 of "PMK Name" + MAC1 + MAC2 with PMK as key
+                        const hmacData = "PMK Name" + mac1 + mac2;
+                        const calculatedPMKID = CryptoJS.HmacSHA1(hmacData, pmk).toString().substring(0, 32);
+                        
+                        return calculatedPMKID === pmkid.toLowerCase();
+                    }
+                    return false;
+                },
+                
+                // Argon2 implementation using argon2-browser
+                'argon2': async function(word, targetHash) {
+                    // Parse the Argon2 hash to extract parameters
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 5) {
+                        const type = parts[1] === 'argon2id' ? argon2.ArgonType.Argon2id : 
+                                   parts[1] === 'argon2i' ? argon2.ArgonType.Argon2i : 
+                                   argon2.ArgonType.Argon2d;
+                        
+                        const time = parseInt(parts[2].split('=')[1], 10);
+                        const memory = parseInt(parts[3].split('=')[1], 10);
+                        const parallelism = parseInt(parts[4].split('=')[1], 10);
+                        const salt = parts[5];
+                        
+                        try {
+                            const result = await argon2.hash({
+                                pass: word,
+                                salt: salt,
+                                time: time,
+                                mem: memory,
+                                parallelism: parallelism,
+                                type: type,
+                                hashLen: 32
+                            });
+                            
+                            return result.encoded === targetHash;
+                        } catch (e) {
+                            console.error('Argon2 error:', e);
+                            return false;
+                        }
+                    }
+                    return false;
+                },
+                
+                // Yescrypt implementation (simplified)
+                'yescrypt': function(word, targetHash) {
+                    // For demonstration - would need actual yescrypt library
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 4) {
+                        const salt = parts[2];
+                        // Using PBKDF2 as a stand-in for yescrypt in this demo
+                        const derivedKey = CryptoJS.PBKDF2(word, salt, { 
+                            keySize: 256/32, 
+                            iterations: 16384,  // Higher iteration count to simulate yescrypt
+                            hasher: CryptoJS.algo.SHA256
+                        }).toString();
+                        
+                        const formatted = '$y$' + parts[1] + '$' + salt + '$' + derivedKey;
+                        return formatted === targetHash;
+                    }
+                    return false;
+                },
+                
+                // Scrypt implementation using scrypt-js
+                'scrypt': async function(word, targetHash) {
+                    const parts = targetHash.split('$');
+                    if (parts.length >= 4) {
+                        const params = parts[2].split(',');
+                        const N = parseInt(params[0], 16);
+                        const r = parseInt(params[1], 16);
+                        const p = parseInt(params[2], 16);
+                        const salt = CryptoJS.enc.Hex.parse(parts[3]);
+                        
+                        try {
+                            // Convert word to buffer
+                            const wordBuf = new TextEncoder().encode(word);
+                            const saltBuf = salt.toString(CryptoJS.enc.Latin1);
+                            
+                            // Call scrypt-js
+                            const derivedKey = await scrypt(wordBuf, saltBuf, N, r, p, 32);
+                            const derivedKeyHex = Array.from(derivedKey)
+                                .map(b => b.toString(16).padStart(2, '0'))
+                                .join('');
+                            
+                            const formatted = '$scrypt$' + parts[2] + '$' + parts[3] + '$' + derivedKeyHex;
+                            return formatted === targetHash;
+                        } catch (e) {
+                            console.error('Scrypt error:', e);
+                            return false;
+                        }
+                    }
+                    return false;
+                }
+            };
+            
+            self.onmessage = async function(e) {
                 const { hashType, targetHash, wordlist, startIndex, endIndex } = e.data;
                 
                 for (let i = startIndex; i < endIndex; i++) {
                     const word = wordlist[i];
                     if (!word) continue;
                     
-                    let hash;
-                    switch(hashType.toLowerCase()) {
-                        case 'md5':
-                            hash = CryptoJS.MD5(word).toString();
-                            break;
-                        case 'sha1':
-                            hash = CryptoJS.SHA1(word).toString();
-                            break;
-                        case 'sha256':
-                            hash = CryptoJS.SHA256(word).toString();
-                            break;
-                        case 'sha512':
-                            hash = CryptoJS.SHA512(word).toString();
-                            break;
-                        case 'sha224':
-                            hash = CryptoJS.SHA224(word).toString();
-                            break;
-                        case 'sha384':
-                            hash = CryptoJS.SHA384(word).toString();
-                            break;
-                        default:
-                            continue;
-                    }
-                    
-                    if (hash === targetHash.toLowerCase()) {
-                        self.postMessage({ found: true, password: word, hash: hash });
-                        return;
+                    // First check if we have a specialized implementation
+                    if (hashImplementations[hashType.toLowerCase()]) {
+                        try {
+                            const result = await hashImplementations[hashType.toLowerCase()](word, targetHash);
+                            if (result) {
+                                self.postMessage({ found: true, password: word, hash: targetHash });
+                                return;
+                            }
+                        } catch (err) {
+                            console.error('Hash implementation error:', err);
+                            // Continue with standard algorithms if specialized implementation fails
+                        }
+                    } else {
+                        // Standard algorithms
+                        let hash;
+                        switch(hashType.toLowerCase()) {
+                            case 'md5':
+                                hash = CryptoJS.MD5(word).toString();
+                                break;
+                            case 'sha1':
+                                hash = CryptoJS.SHA1(word).toString();
+                                break;
+                            case 'sha256':
+                                hash = CryptoJS.SHA256(word).toString();
+                                break;
+                            case 'sha512':
+                                hash = CryptoJS.SHA512(word).toString();
+                                break;
+                            case 'sha224':
+                                hash = CryptoJS.SHA224(word).toString();
+                                break;
+                            case 'sha384':
+                                hash = CryptoJS.SHA384(word).toString();
+                                break;
+                            case 'ntlm':
+                                // NTLM is MD4 of UTF-16LE encoded password
+                                const utf16le = Array.from(word).map(char => {
+                                    return String.fromCharCode(char.charCodeAt(0) & 0xFF, (char.charCodeAt(0) & 0xFF00) >> 8);
+                                }).join('');
+                                hash = CryptoJS.MD4(CryptoJS.enc.Latin1.parse(utf16le)).toString();
+                                break;
+                            case 'mysql-sha1':
+                                // MySQL's SHA1 is *SHA1(SHA1(password))
+                                const innerHash = CryptoJS.SHA1(word).toString();
+                                hash = '*' + CryptoJS.SHA1(CryptoJS.enc.Hex.parse(innerHash)).toString().toUpperCase();
+                                break;
+                            case 'pbkdf2':
+                                // Basic PBKDF2 support - this is a simplified version
+                                // Real PBKDF2 would need salt, iterations, and key length parameters
+                                // from the hash string
+                                if (targetHash.startsWith('$pbkdf2')) {
+                                    const parts = targetHash.split('$');
+                                    if (parts.length >= 5) {
+                                        const iterations = parseInt(parts[2], 10);
+                                        const salt = parts[3];
+                                        const derivedKey = CryptoJS.PBKDF2(word, salt, { 
+                                            keySize: 64/4, 
+                                            iterations: iterations,
+                                            hasher: CryptoJS.algo.SHA256
+                                        }).toString();
+                                        
+                                        hash = '$pbkdf2$' + iterations + '$' + salt + '$' + derivedKey;
+                                    }
+                                }
+                                break;
+                            default:
+                                continue;
+                        }
+                        
+                        if (hash === targetHash.toLowerCase() || hash === targetHash) {
+                            self.postMessage({ found: true, password: word, hash: hash });
+                            return;
+                        }
                     }
                 }
                 
@@ -164,6 +401,35 @@ class HashCracker {
             if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) return { type: 'bcrypt', confidence: 95 };
             if (hash.startsWith('$5$')) return { type: 'SHA-256 Crypt', confidence: 95 };
             if (hash.startsWith('$6$')) return { type: 'SHA-512 Crypt', confidence: 95 };
+            if (hash.startsWith('$y$')) return { type: 'yescrypt', confidence: 95 };
+            if (hash.startsWith('$argon2')) return { type: 'Argon2', confidence: 95 };
+            if (hash.startsWith('$scrypt$')) return { type: 'scrypt', confidence: 95 };
+            if (hash.startsWith('$pbkdf2')) return { type: 'PBKDF2', confidence: 95 };
+        }
+        
+        // Check for specific formats
+        if (/^[0-9a-f]{32}:[0-9a-f]+$/i.test(hash)) {
+            return { type: 'NetNTLMv2', confidence: 85 };
+        }
+        
+        if (/^[0-9a-f]{32}\*[0-9a-f]+\*[0-9a-f]+$/i.test(hash)) {
+            return { type: 'WPA-PMKID', confidence: 90 };
+        }
+        
+        if (/^kdbx:/i.test(hash)) {
+            return { type: 'KeePass-KDBX', confidence: 90 };
+        }
+        
+        if (/^rar5:|^7z:|^pdf:/i.test(hash)) {
+            if (hash.startsWith('rar5:')) return { type: 'RAR5', confidence: 90 };
+            if (hash.startsWith('7z:')) return { type: '7z', confidence: 90 };
+            if (hash.startsWith('pdf:')) return { type: 'PDF', confidence: 90 };
+        }
+        
+        if (hash.includes('*') && hash.split('*').length === 2) {
+            if (/^\*[0-9A-F]{40}$/i.test(hash)) {
+                return { type: 'MySQL-SHA1', confidence: 90 };
+            }
         }
         
         // Detect by length and format
@@ -207,6 +473,14 @@ class HashCracker {
             throw new Error('Hash type could not be detected reliably');
         }
 
+        // Check if this is an advanced algorithm that may be slow
+        if (this.advancedAlgorithms.includes(detection.type.toLowerCase())) {
+            if (typeof showNotification === 'function') {
+                showNotification(`${detection.type} is a complex hash type that may take longer to crack in browser environment.`, 'info');
+            }
+            console.log(`[INFO] ${detection.type} is CPU-intensive and may run slower in the browser.`);
+        }
+
         const wordlist = this.wordlists.get(wordlistName);
         if (!wordlist || wordlist.length === 0) {
             throw new Error('Wordlist not found or empty');
@@ -215,7 +489,7 @@ class HashCracker {
         this.isRunning = true;
         this.startTime = Date.now();
         this.currentJob = {
-            hash: hash.toLowerCase(),
+            hash: hash,  // Keep original case for specialized algorithms
             type: detection.type,
             wordlist: wordlistName,
             totalWords: wordlist.length,

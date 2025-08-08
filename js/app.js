@@ -81,6 +81,18 @@ function setupHashDetection() {
                         Detected <strong>${detection.type}</strong> hash 
                         (${detection.confidence}% confidence)
                     `;
+                    
+                    // Check if this is an advanced algorithm that may be slower
+                    if (window.hashCracker.advancedAlgorithms && 
+                        window.hashCracker.advancedAlgorithms.includes(detection.type.toLowerCase())) {
+                        hashDetection.innerHTML += `
+                            <div class="info-text">
+                                <i class="fas fa-info-circle"></i>
+                                This hash type is computationally intensive and may take longer to crack
+                            </div>
+                        `;
+                    }
+                    
                     hashDetection.style.display = 'block';
                 } else {
                     hashDetection.innerHTML = `

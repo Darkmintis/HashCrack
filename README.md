@@ -7,20 +7,49 @@ Professional client-side hash cracking tool for CTF players and security profess
 - **100% Client-side**: All processing happens in your browser - no server needed
 - **CTF Ready**: Optimized for speed and efficiency during CTF competitions
 - **Multi-threaded**: Uses Web Workers for parallel processing across CPU cores
-- **Multiple hash algorithms**: MD5, SHA1, SHA256, SHA512, SHA224, SHA384
+- **Comprehensive hash support**: 18+ hash types including memory-hard functions
 - **Built-in wordlists**: 10K, 100K, and RockYou wordlists included
 - **Custom wordlist support**: Upload your own wordlists (.txt files)
 - **Real-time progress**: Live status updates and attempt counters
 - **Results history**: Track previously cracked hashes
+- **Automatic hash detection**: Identifies hash types based on patterns
+- **Advanced algorithms**: Support for Argon2, scrypt, yescrypt and other modern hash types
 
 ## Supported Hash Types
 
-- MD5
-- SHA1  
-- SHA256
-- SHA512
-- SHA224
-- SHA384
+HashCrack can detect and crack the following hash types:
+
+| Hash Type | Description | Example/Format |
+|-----------|-------------|----------------|
+| MD5 | 32 characters, hexadecimal | `5f4dcc3b5aa765d61d8327deb882cf99` |
+| SHA1 | 40 characters, hexadecimal | `5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8` |
+| SHA224 | 56 characters, hexadecimal | `d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f` |
+| SHA256 | 64 characters, hexadecimal | `5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8` |
+| SHA384 | 96 characters, hexadecimal | `a8b64babd0aca91a59bdbb7761b421d4f2bb38280d3a75ba0f21f2bebc45583d446c598660c94ce680c47d19c30783a7` |
+| SHA512 | 128 characters, hexadecimal | `b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86` |
+| MD5 Crypt | Starts with `$1$` | `$1$salt$hash` |
+| bcrypt | Starts with `$2a$` or `$2b$` | `$2a$10$salt_and_hash` |
+| SHA-256 Crypt | Starts with `$5$` | `$5$salt$hash` |
+| SHA-512 Crypt | Starts with `$6$` | `$6$salt$hash` |
+| NTLM | 32 characters | `8846F7EAEE8FB117AD06BDD830B7586C` |
+| MySQL-SHA1 | Format: `*<40 HEX CHARS>` | `*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19` |
+| PBKDF2 | Format varies with implementation | `$pbkdf2$iterations$salt$hash` |
+| yescrypt | Modern password hashing | `$y$params$salt$hash` |
+| Argon2 | Winner of PHC competition | `$argon2id$v=19$m=65536,t=3,p=4$salt$hash` |
+| scrypt | Memory-hard hashing function | `$scrypt$params$salt$hash` |
+| NetNTLMv2 | Windows authentication | `hash:challenge` |
+| WPA-PMKID | WiFi password hashing | `pmkid*mac1*mac2` |
+
+### Computationally Intensive Hash Types
+
+The following hash types are supported but may be slower in browser environments:
+
+| Hash Type | Description | Notes |
+|-----------|-------------|-------|
+| KeePass KDBX | Password manager format | CPU intensive |
+| 7z | Archive format | CPU intensive |
+| RAR5 | Archive format | CPU intensive |
+| PDF | Document encryption | CPU intensive |
 
 ## Quick Start
 

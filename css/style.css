@@ -1739,3 +1739,38 @@ h6 { font-size: 1rem; }
     font-size: 0.9rem; 
     color: #666;
 }
+
+/* Warning message for advanced hash types */
+.warning-text {
+    margin-top: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background-color: #fff8e6;
+    border-left: 3px solid var(--warning-500);
+    color: #7c5e10;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.warning-text i {
+    color: var(--warning-500);
+}
+
+.info-text {
+    margin-top: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background-color: #e6f7ff;
+    border-left: 3px solid #1976d2;
+    color: #0c5a9e;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.info-text i {
+    color: #1976d2;
+}
