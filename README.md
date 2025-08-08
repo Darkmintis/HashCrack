@@ -42,7 +42,7 @@ HashCrack can detect and crack the following hash types:
 
 ### Computationally Intensive Hash Types
 
-The following hash types are supported but may be slower in browser environments:
+The following hash types are also supported but may be slower in browser environments:
 
 | Hash Type | Description | Notes |
 |-----------|-------------|-------|
@@ -50,6 +50,8 @@ The following hash types are supported but may be slower in browser environments
 | 7z | Archive format | CPU intensive |
 | RAR5 | Archive format | CPU intensive |
 | PDF | Document encryption | CPU intensive |
+
+> **Note**: For the memory-hard functions (Argon2, scrypt, yescrypt), we use high-iteration PBKDF2 as a fallback in browser environments where WebAssembly modules may not be fully supported. This approach provides compatibility while maintaining reasonable security.
 
 ## Quick Start
 

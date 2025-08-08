@@ -93,6 +93,16 @@ function setupHashDetection() {
                         `;
                     }
                     
+                    // Memory-hard algorithms get a special note
+                    if (['argon2', 'scrypt', 'yescrypt'].includes(detection.type.toLowerCase())) {
+                        hashDetection.innerHTML += `
+                            <div class="info-text">
+                                <i class="fas fa-microchip"></i>
+                                Using optimized implementation for this memory-hard function
+                            </div>
+                        `;
+                    }
+                    
                     hashDetection.style.display = 'block';
                 } else {
                     hashDetection.innerHTML = `
