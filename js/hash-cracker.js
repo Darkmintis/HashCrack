@@ -39,6 +39,13 @@ class HashCracker {
         for (let i = 0; i < numWorkers; i++) {
             const worker = new Worker(this.createWorkerBlob());
             worker.onmessage = this.handleWorkerMessage.bind(this);
+            
+            // Add error handler for worker
+            worker.onerror = (err) => {
+                console.error('Worker error:', err && err.message ? err.message : 'Unknown worker error');
+                // Continue operation - don't crash the entire application for a worker error
+            };
+            
             this.workers.push(worker);
         }
     }
@@ -62,7 +69,7 @@ class HashCracker {
             function loadModules() {
                 // Use Argon2 fallback implementation directly
             self.argon2 = {
-                hash: async function(params) {
+                hash: function(params) {
                     // This is a simplified version that doesn't use WASM
                     // but provides the same interface for compatibility
                     const salt = params.salt || 'salt';
@@ -401,7 +408,8 @@ class HashCracker {
                                 // Get salt (usually base64 encoded)
                                 const salt = parts[parts.length - 2];
                                 
-                                // Create hash using the loaded module
+                                // For our fallback implementation, we handle synchronously
+                                // Create the fallback hash
                                 const result = self.argon2.hash({
                                     pass: word,
                                     salt: salt,
@@ -412,23 +420,31 @@ class HashCracker {
                                     hashLen: 32
                                 });
                                 
-                                // Compare hashes - for the fallback we're using a simplified comparison
-                                const simplifiedTarget = CryptoJS.PBKDF2(targetHash, salt, {
-                                    keySize: 128/32,
-                                    iterations: 1,
-                                    hasher: CryptoJS.algo.SHA256
-                                }).toString().substring(0, 32);
+                                // The original hash is expected to be a promise, but our fallback returns directly
+                                // To handle both cases, check if it's a promise and handle accordingly
+                                const handleResult = (actualResult) => {
+                                    // Compare hashes - for the fallback we're using a simplified comparison
+                                    const simplifiedTarget = CryptoJS.PBKDF2(targetHash, salt, {
+                                        keySize: 128/32,
+                                        iterations: 1,
+                                        hasher: CryptoJS.algo.SHA256
+                                    }).toString().substring(0, 32);
+                                    
+                                    const simplifiedResult = CryptoJS.PBKDF2(actualResult.encoded || actualResult.hash, salt, {
+                                        keySize: 128/32,
+                                        iterations: 1,
+                                        hasher: CryptoJS.algo.SHA256
+                                    }).toString().substring(0, 32);
+                                    
+                                    return simplifiedResult === simplifiedTarget;
+                                };
                                 
-                                const simplifiedResult = CryptoJS.PBKDF2(result.encoded || result.hash, salt, {
-                                    keySize: 128/32,
-                                    iterations: 1,
-                                    hasher: CryptoJS.algo.SHA256
-                                }).toString().substring(0, 32);
-                                
-                                return simplifiedResult === simplifiedTarget;
+                                // Our implementation is synchronous, so we can just use the result directly
+                                return handleResult(result);
                             }
                         } catch (e) {
-                            console.error('Argon2 error:', e);
+                            console.error('Argon2 error:', e && e.message ? e.message : 'Unknown error processing Argon2 hash');
+                            // Continue to fallback
                         }
                     }
                     
@@ -468,7 +484,7 @@ class HashCracker {
                             return targetFingerprint === resultFingerprint;
                         }
                     } catch (e) {
-                        console.error('Argon2 fallback error:', e);
+                        console.error('Argon2 fallback error:', e && e.message ? e.message : 'Unknown error in Argon2 fallback');
                     }
                     
                     return false;
@@ -578,7 +594,18 @@ class HashCracker {
                                 return;
                             }
                         } catch (err) {
-                            console.error('Hash implementation error:', err);
+                            // Add more detailed error logging with algorithm information
+                            console.error('Hash implementation error for ' + hashType + ':', 
+                                err && err.message ? err.message : 'Unknown error');
+                            
+                            // Report error to main thread but continue processing
+                            self.postMessage({ 
+                                error: true, 
+                                algorithm: hashType,
+                                message: err && err.message ? err.message : 'Unknown error processing hash',
+                                word: word.substring(0, 10) + (word.length > 10 ? '...' : '') // First 10 chars for debugging
+                            });
+                            
                             // Continue with standard algorithms if specialized implementation fails
                         }
                     } else {
@@ -653,13 +680,34 @@ class HashCracker {
     }
 
     handleWorkerMessage(e) {
-        const { found, password, hash, processed } = e.data;
+        const { found, password, hash, processed, error, algorithm, message, word } = e.data;
         
         if (found) {
             this.stopCracking();
             this.displayResult(password, hash);
         } else if (processed) {
             this.updateProgress(processed);
+        } else if (error) {
+            // Handle error messages from workers
+            console.warn('Worker reported error with algorithm:', algorithm, message);
+            
+            // Only log to console, don't disrupt the cracking process
+            // If this is a recurring issue, we might want to disable the algorithm
+            if (this.algorithmErrors === undefined) {
+                this.algorithmErrors = {};
+            }
+            
+            // Keep track of errors per algorithm
+            if (!this.algorithmErrors[algorithm]) {
+                this.algorithmErrors[algorithm] = 0;
+            }
+            this.algorithmErrors[algorithm]++;
+            
+            // If too many errors for an algorithm, log a warning
+            if (this.algorithmErrors[algorithm] > 10) {
+                console.warn('Multiple errors detected with algorithm:', algorithm, 
+                    'Consider disabling this algorithm if the problem persists.');
+            }
         }
     }
 
