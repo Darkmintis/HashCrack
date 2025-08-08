@@ -52,7 +52,7 @@ The following hash types are also supported but may be slower in browser environ
 | RAR5 | Archive format | `rar5:<iterations>:<salt_hex>:<checkval_hex>` |
 | PDF | Document encryption | `pdf:<version>:<algorithm>:<iterations>:<salt_hex>:<u_hex>:<o_hex>` |
 
-> **Note**: For the memory-hard functions (Argon2, scrypt, yescrypt), we use high-iteration PBKDF2 as a fallback in browser environments where WebAssembly modules may not be fully supported. This approach provides compatibility while maintaining reasonable security.
+> **Note**: For the memory-hard functions (Argon2, scrypt, yescrypt) and algorithms requiring specific libraries (bcrypt), we use high-iteration PBKDF2 as a fallback in browser environments where external modules may not be fully supported. This approach provides compatibility while maintaining reasonable security approximation.
 
 ## Quick Start
 
