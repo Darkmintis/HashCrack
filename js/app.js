@@ -16,6 +16,11 @@ const AppState = {
     customWordlists: new Map()
 };
 
+// Utility function for logging
+function logMessage(type, message) {
+    console.log(`[${type}] ${message}`);
+}
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -23,7 +28,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    console.log(`[INFO] ${CONFIG.PLATFORM_NAME} ${CONFIG.VERSION} initialized successfully`);
+    // Silent initialization to reduce console noise
+    // logMessage('INFO', `${CONFIG.PLATFORM_NAME} ${CONFIG.VERSION} initialized successfully`);
     
     // Load stored results
     loadStoredResults();
@@ -48,7 +54,8 @@ function initializeApp() {
         return;
     }
     
-    console.log('[SUCCESS] All dependencies loaded successfully');
+    // Silent success to reduce console noise
+    // console.log('[SUCCESS] All dependencies loaded successfully');
 }
 
 // Add real-time hash detection
@@ -699,4 +706,5 @@ window.HashCrackApp = {
     showNotification
 };
 
-console.log('[SYSTEM] HashCrack platform ready for operation');
+// Silent startup to reduce console noise
+// console.log('[SYSTEM] HashCrack platform ready for operation');

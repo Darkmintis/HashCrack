@@ -32,6 +32,13 @@ class HashCracker {
         this.loadBuiltInWordlists();
         this.initializeWorkers();
     }
+    
+    // Logger function for consistent logging
+    log(type, ...args) {
+        if (type === 'info') console.log(...args);
+        else if (type === 'warn') console.warn(...args);
+        else if (type === 'error') console.error(...args);
+    }
 
     // Initialize web workers for parallel processing
     initializeWorkers() {
@@ -42,7 +49,7 @@ class HashCracker {
             
             // Add error handler for worker
             worker.onerror = (err) => {
-                console.error('Worker error:', err && err.message ? err.message : 'Unknown worker error');
+                this.log('error', 'Worker error:', err && err.message ? err.message : 'Unknown worker error');
                 // Continue operation - don't crash the entire application for a worker error
             };
             
@@ -63,19 +70,21 @@ class HashCracker {
                 bcrypt: false
             };
             
-            // Create our bcrypt fallback implementation
+            // Logging function
+            function log(type, ...args) {
+                // Only log errors, suppress all other logs
+                if (type === 'error') console.error(...args);
+                // Uncomment below for debugging
+                // if (type === 'info') console.log(...args);
+                // else if (type === 'warn') console.warn(...args);
+            }
+            
+            // Initialize our bcrypt implementation
             let bcrypt = null;
             
-            // Try to load bcryptjs but have a fallback ready
-            try {
-                importScripts('https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js');
-                moduleStatus.bcrypt = true;
-                console.log('bcrypt module loaded successfully');
-            } catch(e) {
-                console.warn('Failed to load bcrypt module, using fallback:', e);
-                
-                // Create a minimal bcrypt fallback implementation that uses PBKDF2
-                bcrypt = {
+            // Create our own bcrypt implementation that uses PBKDF2
+            const createBcryptFallback = function() {
+                return {
                     compareSync: function(password, hash) {
                         try {
                             // Parse the bcrypt hash format
@@ -103,7 +112,7 @@ class HashCracker {
                                        CryptoJS.SHA256(key2).toString().substring(0, 31);
                             }
                         } catch(e) {
-                            console.error('bcrypt fallback compareSync error:', e);
+                            log('error', 'bcrypt fallback compareSync error:', e);
                         }
                         return false;
                     },
@@ -128,13 +137,31 @@ class HashCracker {
                                 return salt + '$' + key.substring(0, 31);
                             }
                         } catch(e) {
-                            console.error('bcrypt fallback hashSync error:', e);
+                            log('error', 'bcrypt fallback hashSync error:', e);
                         }
                         return 'bcrypt_fallback_error';
                     }
                 };
-                moduleStatus.bcrypt = true;
-                console.log('bcrypt fallback initialized');
+            };
+            
+            // Always initialize our fallback first so we're never without bcrypt
+            bcrypt = createBcryptFallback();
+            moduleStatus.bcrypt = true;
+            
+            // Then try to load the real bcrypt library and replace our fallback if successful
+            try {
+                importScripts('https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js');
+                
+                // Make sure the bcrypt global was properly set by importScripts
+                if (typeof self.bcrypt !== 'undefined' && self.bcrypt) {
+                    // Replace our fallback with the real thing
+                    bcrypt = self.bcrypt;
+                    // log('info', 'bcrypt module loaded successfully from external library');
+                } else {
+                    // log('info', 'bcrypt module imported but not globally available, using fallback');
+                }
+            } catch(e) {
+                // log('warn', 'Failed to load external bcrypt module, using fallback');
             }
             
             // Load modules with fallbacks
@@ -164,13 +191,16 @@ class HashCracker {
                     }
                 };
                 moduleStatus.argon2 = true;
-                console.log('Argon2 module initialized with fallback implementation');
+                // Silent initialization
+                // log('info', 'Argon2 module initialized with fallback implementation');
                 
-                // Verify bcrypt is properly available (already loaded or initialized above)
+                // Verify bcrypt is properly available 
                 if (typeof bcrypt === 'undefined' || bcrypt === null) {
-                    console.warn('bcrypt is still not available after initialization attempt');
+                    // If bcrypt is somehow not set, recreate the fallback
+                    bcrypt = createBcryptFallback();
+                    log('info', 'bcrypt recreated with fallback implementation');
                 } else {
-                    console.log('bcrypt is available and ready to use');
+                    log('info', 'bcrypt implementation is available and ready to use');
                 }
                 
                 // Try to load scrypt-js
@@ -189,18 +219,20 @@ class HashCracker {
                         return CryptoJS.enc.Hex.parse(derivedKey.toString()).words;
                     };
                     moduleStatus.scrypt = true;
-                    console.log('Scrypt module initialized with fallback');
+                    // Silent initialization
+                    // log('info', 'Scrypt module initialized with fallback');
                 } catch (e) {
-                    console.error('Failed to load scrypt module:', e);
+                    // log('warn', 'Failed to load scrypt module, using internal fallback');
                 }
                 
                 // Try to load zlib for archive formats
                 try {
                     self.importScripts('https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js');
                     moduleStatus.zlib = true;
-                    console.log('Zlib module initialized');
+                    // Silent initialization
+                    // log('info', 'Zlib module initialized');
                 } catch (e) {
-                    console.error('Failed to load zlib module:', e);
+                    // log('warn', 'Failed to load zlib module');
                 }
             }
             
@@ -374,40 +406,20 @@ class HashCracker {
                 
                 // bcrypt implementation using bcryptjs or our fallback
                 'bcrypt': function(word, targetHash) {
-                    // Check if we have bcrypt available (either from the library or our fallback)
-                    if (typeof bcrypt !== 'undefined' && bcrypt !== null) {
-                        try {
-                            return bcrypt.compareSync(word, targetHash);
-                        } catch (e) {
-                            console.error('bcrypt error:', e && e.message ? e.message : 'Unknown bcrypt error');
-                            
-                            // Try fallback implementation if primary fails
-                            try {
-                                const parts = targetHash.split('$');
-                                if (parts.length >= 4) {
-                                    const cost = parseInt(parts[2].replace(/^0+/, ''), 10);
-                                    const salt = parts[3].split('.')[0];
-                                    
-                                    // Generate a new hash with the same parameters
-                                    const newHash = bcrypt.hashSync(word, '$2a$' + 
-                                        (cost < 10 ? '0' + cost : cost) + '$' + salt);
-                                    
-                                    return newHash === targetHash;
-                                }
-                            } catch (fallbackError) {
-                                console.error('bcrypt fallback error:', fallbackError && fallbackError.message ? 
-                                    fallbackError.message : 'Unknown bcrypt fallback error');
-                            }
-                        }
-                    } else {
-                        // If bcrypt is not available at all, use a simple PBKDF2 approach
+                    // Our bcrypt variable should always be available
+                    try {
+                        return bcrypt.compareSync(word, targetHash);
+                    } catch (e) {
+                        this.log('error', 'bcrypt compareSync error:', e && e.message ? e.message : 'Unknown bcrypt error');
+                        
+                        // Try the fallback method without using the library directly
                         try {
                             const parts = targetHash.split('$');
                             if (parts.length >= 4) {
                                 const cost = parseInt(parts[2].replace(/^0+/, ''), 10);
                                 const salt = parts[3].split('.')[0];
                                 
-                                // Higher iterations for more security (bcrypt equivalent)
+                                // Use PBKDF2 with cost factor
                                 const iterations = Math.pow(2, cost) * 1000;
                                 const derived = CryptoJS.PBKDF2(word, salt, {
                                     keySize: 256/32,
@@ -422,9 +434,9 @@ class HashCracker {
                                 
                                 return targetFingerprint === derivedFingerprint;
                             }
-                        } catch (noLibraryError) {
-                            console.error('bcrypt alternative implementation error:', 
-                                noLibraryError && noLibraryError.message ? noLibraryError.message : 'Unknown error');
+                        } catch (fallbackError) {
+                            console.error('bcrypt pure fallback error:', 
+                                fallbackError && fallbackError.message ? fallbackError.message : 'Unknown fallback error');
                         }
                     }
                     return false;
@@ -859,10 +871,12 @@ class HashCracker {
                 // Combine and deduplicate
                 const combinedRockyou = [...new Set([...rockyou1Words, ...rockyou2Words])];
                 this.wordlists.set('rockyou', combinedRockyou);
-                console.log(`Created combined rockyou wordlist with ${combinedRockyou.length} unique words`);
+                // Silent operation to reduce console noise
+                // console.log(`Created combined rockyou wordlist with ${combinedRockyou.length} unique words`);
             }
         } catch (e) {
-            console.log('Using built-in wordlists only');
+            // Silent fallback to reduce console noise
+            // console.log('Using built-in wordlists only');
         }
     }
 
@@ -876,13 +890,14 @@ class HashCracker {
                     .filter(word => word.length > 0);
                 
                 this.wordlists.set(name, words);
-                console.log(`Loaded ${words.length} words from ${name}.txt`);
+                // Silent loading to reduce noise
+                // this.log('info', `Loaded ${words.length} words from ${name}.txt`);
                 return true;
             } else {
-                console.log(`Could not load ${name}.txt (Status: ${response.status})`);
+                this.log('warn', `Could not load ${name}.txt (Status: ${response.status})`);
             }
         } catch (e) {
-            console.log(`Error loading ${name}.txt:`, e.message);
+            this.log('error', `Error loading ${name}.txt:`, e.message);
         }
         return false;
     }
@@ -1018,13 +1033,25 @@ class HashCracker {
         this.updateUI('stopped');
     }
 
+    // Calculate hash cracking speed
+    calculateSpeed() {
+        if (!this.isRunning || !this.currentJob) return 0;
+        
+        const elapsed = (Date.now() - this.startTime) / 1000;
+        if (elapsed <= 0) return 0;
+        
+        const speed = Math.round(this.currentJob.processedWords / elapsed);
+        this.log('info', `Current cracking speed: ${speed.toLocaleString()} hashes/sec`);
+        
+        return speed;
+    }
+
     updateProgress(processed) {
         if (!this.currentJob) return;
         
         this.currentJob.processedWords += processed;
         const progress = (this.currentJob.processedWords / this.currentJob.totalWords) * 100;
-        const elapsed = (Date.now() - this.startTime) / 1000;
-        this.hashesPerSecond = Math.round(this.currentJob.processedWords / elapsed);
+        this.hashesPerSecond = this.calculateSpeed();
         
         this.updateUI('progress', null, progress);
     }
@@ -1098,12 +1125,27 @@ class HashCracker {
             throw new Error('Already cracking a hash');
         }
         
-        // Handle options
-        const hashType = options.hashType || this.detectHashType(hash).type;
+        // Auto-detect hash type if not specified
+        const detection = options.hashType ? 
+            { type: options.hashType, confidence: 100 } : 
+            this.detectHashType(hash);
+            
+        // Validate hash type detection
+        if (detection.type.toLowerCase() === 'unknown') {
+            throw new Error('Could not detect hash type. Please specify manually.');
+        }
+        
+        const hashType = detection.type;
         const onProgress = options.onProgress || (() => {});
         
-        if (!this.supportedAlgorithms.includes(hashType.toLowerCase())) {
+        if (!this.supportedAlgorithms.includes(hashType.toLowerCase()) && 
+            !this.advancedAlgorithms.includes(hashType.toLowerCase())) {
             throw new Error(`Unsupported hash type: ${hashType}`);
+        }
+        
+        // Check if this is a memory-intensive algorithm
+        if (this.advancedAlgorithms.includes(hashType.toLowerCase())) {
+            this.log('info', `${hashType} is CPU-intensive and may run slower in the browser.`);
         }
         
         // Setup for cracking
@@ -1175,7 +1217,7 @@ class HashCracker {
                                 return resultHash === headerHash.substring(0, 16);
                             }
                         } catch (e) {
-                            console.error('KeePass error:', e);
+                            this.log('error', 'KeePass error:', e);
                         }
                     }
                     return false;
