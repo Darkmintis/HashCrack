@@ -1336,6 +1336,13 @@ h6 { font-size: 1rem; }
     padding: 1.5rem;
     border-radius: 10px;
     border: 2px solid #e9ecef;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.wordlist-built-in:hover {
+    border-color: #1976d2;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .wordlist-upload {
@@ -1351,6 +1358,23 @@ h6 { font-size: 1rem; }
     border: 1px solid #ced4da;
     border-radius: 8px;
     font-size: 0.95rem;
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: 500;
+}
+
+.wordlist-select option {
+    padding: 10px;
+    background-color: #fff;
+    color: #333;
+    font-weight: 500;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.wordlist-select option:hover,
+.wordlist-select option:checked {
+    background-color: #e3f2fd;
+    color: #1976d2;
 }
 
 .file-upload-area {
@@ -1686,8 +1710,14 @@ h6 { font-size: 1rem; }
 /* New classes for removed inline styles */
 .wordlist-help {
     color: #666; 
-    margin-top: 0.5rem; 
+    margin-top: 0.75rem; 
     display: block;
+    font-style: italic;
+    background: #e3f2fd;
+    padding: 0.5rem;
+    border-radius: 5px;
+    font-size: 0.85rem;
+    border-left: 3px solid #1976d2;
 }
 
 .upload-icon {

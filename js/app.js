@@ -411,9 +411,12 @@ async function loadBuiltInWordlist(name) {
     try {
         // Handle combined rockyou case
         if (name === 'rockyou') {
+            console.log('[INFO] Loading RockYou wordlist (combined from Part 1 and Part 2)');
+            
             // Try to load it directly first
             const response = await fetch(`wordlists/rockyou.txt`);
             if (response.ok) {
+                console.log('[INFO] Found single RockYou file, using that directly');
                 const text = await response.text();
                 return text.split('\n')
                     .map(line => line.trim())
@@ -425,6 +428,7 @@ async function loadBuiltInWordlist(name) {
             const response2 = await fetch(`wordlists/rockyou2.txt`);
             
             if (response1.ok && response2.ok) {
+                console.log('[INFO] Combining RockYou Part 1 and Part 2 wordlists');
                 const text1 = await response1.text();
                 const text2 = await response2.text();
                 
@@ -436,8 +440,30 @@ async function loadBuiltInWordlist(name) {
                     .map(line => line.trim())
                     .filter(line => line.length > 0);
                 
+                console.log(`[INFO] Loaded ${words1.length.toLocaleString()} passwords from Part 1 and ${words2.length.toLocaleString()} from Part 2`);
+                
                 // Combine and remove duplicates
-                return [...new Set([...words1, ...words2])];
+                const combined = [...new Set([...words1, ...words2])];
+                console.log(`[INFO] Combined RockYou wordlist has ${combined.length.toLocaleString()} unique passwords`);
+                return combined;
+            } else {
+                console.warn('[WARNING] Failed to load one or both RockYou wordlist parts');
+                // If only one part is available, return that
+                if (response1.ok) {
+                    console.log('[INFO] Only RockYou Part 1 is available, using that');
+                    const text1 = await response1.text();
+                    return text1.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0);
+                }
+                if (response2.ok) {
+                    console.log('[INFO] Only RockYou Part 2 is available, using that');
+                    const text2 = await response2.text();
+                    return text2.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0);
+                }
+                return [];
             }
         }
         
