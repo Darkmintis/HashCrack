@@ -49,10 +49,6 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# HashCrack Specific
-wordlists/*.txt
-!wordlists/common.txt
-!wordlists/README.md
 temp_*.txt
 *.pot
 *.log

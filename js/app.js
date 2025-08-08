@@ -5,8 +5,8 @@
 
 // Configuration
 const CONFIG = {
-    VERSION: 'v2.0-Ultimate',
-    PLATFORM_NAME: 'HashCrack Ultimate'
+    VERSION: 'v2.0',
+    PLATFORM_NAME: 'HashCrack'
 };
 
 // Global application state
@@ -197,15 +197,47 @@ window.startCracking = async function startCracking() {
 // Load built-in wordlists
 async function loadBuiltInWordlist(name) {
     try {
-        const response = await fetch(`wordlists/${name}.txt`);
-        if (!response.ok) {
-            console.warn(`[WORDLIST] Could not load ${name}.txt`);
-            return [];
+        // Handle combined rockyou case
+        if (name === 'rockyou') {
+            // Try to load it directly first
+            const response = await fetch(`wordlists/rockyou.txt`);
+            if (response.ok) {
+                const text = await response.text();
+                return text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+            }
+            
+            // If not available, try to combine rockyou1 and rockyou2
+            const response1 = await fetch(`wordlists/rockyou1.txt`);
+            const response2 = await fetch(`wordlists/rockyou2.txt`);
+            
+            if (response1.ok && response2.ok) {
+                const text1 = await response1.text();
+                const text2 = await response2.text();
+                
+                const words1 = text1.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+                    
+                const words2 = text2.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+                
+                // Combine and remove duplicates
+                return [...new Set([...words1, ...words2])];
+            }
         }
         
-        const text = await response.text();
-        return text.split(/\r?\n/).filter(word => word.trim());
-        
+        // Regular wordlist loading
+        const response = await fetch(`wordlists/${name}.txt`);
+        if (response.ok) {
+            const text = await response.text();
+            return text.split(/\r?\n/).filter(word => word.trim());
+        } else {
+            console.warn(`[WORDLIST] Could not load ${name}.txt (Status: ${response.status})`);
+            return [];
+        }
     } catch (error) {
         console.warn(`[WORDLIST] Error loading ${name}:`, error.message);
         return [];

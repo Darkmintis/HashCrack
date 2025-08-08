@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HashCrack - Ultimate Hash Cracking Platform</title>
+    <title>HashCrack - Client-Side Hash Cracking Tool</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔓</text></svg>">
     
     <!-- Fonts -->
@@ -16,27 +16,89 @@
     <style>
         /* Enhanced styles for the ultimate platform */
         .ultimate-platform {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
         }
         
         .platform-header {
             text-align: center;
             padding: 2rem 0;
-            color: white;
+            color: #333;
         }
         
         .platform-title {
             font-size: 3.5rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
         
         .platform-subtitle {
             font-size: 1.4rem;
-            opacity: 0.9;
+            opacity: 0.8;
             margin-bottom: 0;
+        }
+        
+        /* Tab styles */
+        .tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #eaecef;
+        }
+        
+        .tab {
+            padding: 0.8rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+        
+        .tab:hover {
+            color: #333;
+        }
+        
+        .tab.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Hash generation styles */
+        .generated-hash-display {
+            font-family: 'Courier New', monospace;
+            background: #f5f7fa;
+            padding: 1rem;
+            border-radius: 8px;
+            word-break: break-all;
+            border: 1px solid #e1e5e9;
+            margin-bottom: 0.8rem;
+        }
+        
+        .copy-button {
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-button:hover {
+            background: #e9ecef;
         }
         
         .crack-container {
@@ -296,11 +358,17 @@
     <!-- Platform Header -->
     <header class="platform-header">
         <h1 class="platform-title">🔓 HashCrack</h1>
-        <p class="platform-subtitle">Ultimate Client-Side Hash Cracking Platform</p>
+        <p class="platform-subtitle">Client-Side Hash Cracking Tool</p>
     </header>
 
     <!-- Main Container -->
     <div class="crack-container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="crack">Crack Hash</button>
+            <button class="tab" data-tab="generate">Generate Hash</button>
+        </div>
+
         <!-- Statistics -->
         <div class="stats-row" id="statsDisplay">
             <div class="stat-card">
@@ -317,68 +385,113 @@
             </div>
         </div>
 
-        <!-- Hash Input -->
-        <div class="input-group">
-            <label for="hashInput" class="input-label">
-                <i class="fas fa-key"></i> Enter Hash to Crack
-            </label>
-            <input type="text" 
-                   id="hashInput" 
-                   class="hash-input" 
-                   placeholder="Enter MD5, SHA1, SHA256, SHA512, or other hash..."
-                   autocomplete="off">
-            <div id="hashDetection" class="hash-detection" style="display: none;"></div>
-        </div>
-
-        <!-- Wordlist Selection -->
-        <div class="wordlist-section">
-            <!-- Built-in Wordlists -->
-            <div class="wordlist-built-in">
-                <label class="input-label">
-                    <i class="fas fa-list"></i> Built-in Wordlists
+        <!-- Crack Hash Tab -->
+        <div class="tab-content active" id="crackTab">
+            <!-- Hash Input -->
+            <div class="input-group">
+                <label for="hashInput" class="input-label">
+                    <i class="fas fa-key"></i> Enter Hash to Crack
                 </label>
-                <select id="wordlistSelect" class="wordlist-select" multiple size="4">
-                    <option value="common" selected>Common Passwords (10K)</option>
-                    <option value="enhanced">Enhanced Passwords (100K)</option>
-                    <option value="rockyou">RockYou (14M) - Premium</option>
-                    <option value="names">Common Names</option>
-                </select>
-                <small style="color: #666; margin-top: 0.5rem; display: block;">
-                    Hold Ctrl/Cmd to select multiple wordlists
-                </small>
+                <input type="text" 
+                       id="hashInput" 
+                       class="hash-input" 
+                       placeholder="Enter MD5, SHA1, SHA256, SHA512, or other hash..."
+                       autocomplete="off">
+                <div id="hashDetection" class="hash-detection" style="display: none;"></div>
             </div>
 
-            <!-- Custom Wordlist Upload -->
-            <div class="wordlist-upload">
-                <label class="input-label">
-                    <i class="fas fa-upload"></i> Custom Wordlist
-                </label>
-                <div class="file-upload-area" id="fileUploadArea">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #ccc; margin-bottom: 1rem;"></i>
-                    <div>Drop your wordlist here or click to browse</div>
-                    <small style="color: #666;">Supports .txt files up to 500MB</small>
-                    <input type="file" id="wordlistFile" accept=".txt" style="display: none;">
+            <!-- Wordlist Selection -->
+            <div class="wordlist-section">
+                <!-- Built-in Wordlists -->
+                <div class="wordlist-built-in">
+                    <label class="input-label">
+                        <i class="fas fa-list"></i> Built-in Wordlists
+                    </label>
+                    <select id="wordlistSelect" class="wordlist-select" multiple size="4">
+                        <option value="10k" selected>Common Passwords (10K)</option>
+                        <option value="100k">Extended Passwords (100K)</option>
+                        <option value="rockyou1">RockYou Part 1</option>
+                        <option value="rockyou2">RockYou Part 2</option>
+                    </select>
+                    <small style="color: #666; margin-top: 0.5rem; display: block;">
+                        Hold Ctrl/Cmd to select multiple wordlists
+                    </small>
                 </div>
-                <div id="uploadStatus" style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;"></div>
+
+                <!-- Custom Wordlist Upload -->
+                <div class="wordlist-upload">
+                    <label class="input-label">
+                        <i class="fas fa-upload"></i> Custom Wordlist
+                    </label>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #ccc; margin-bottom: 1rem;"></i>
+                        <div>Drop your wordlist here or click to browse</div>
+                        <small style="color: #666;">Supports .txt files up to 500MB</small>
+                        <input type="file" id="wordlistFile" accept=".txt" style="display: none;">
+                    </div>
+                    <div id="uploadStatus" style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;"></div>
+                </div>
+            </div>
+
+            <!-- Crack Button -->
+            <button id="crackButton" class="crack-button" onclick="startCracking()">
+                <i class="fas fa-rocket"></i> Start Cracking
+            </button>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="progress-section">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="progress-status" id="progressStatus">Ready to start...</div>
             </div>
         </div>
 
-        <!-- Crack Button -->
-        <button id="crackButton" class="crack-button" onclick="startCracking()">
-            <i class="fas fa-rocket"></i> Start Cracking
-        </button>
-
-        <!-- Progress Section -->
-        <div id="progressSection" class="progress-section">
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar"></div>
+        <!-- Generate Hash Tab -->
+        <div class="tab-content" id="generateTab">
+            <div class="input-group">
+                <label for="passwordInput" class="input-label">
+                    <i class="fas fa-lock"></i> Enter Text to Hash
+                </label>
+                <input type="text" 
+                       id="passwordInput" 
+                       class="hash-input" 
+                       placeholder="Enter text to generate hash..."
+                       autocomplete="off">
             </div>
-            <div class="progress-status" id="progressStatus">Ready to start...</div>
+            
+            <div class="input-group">
+                <label for="algorithmSelect" class="input-label">
+                    <i class="fas fa-cogs"></i> Hash Algorithm
+                </label>
+                <select id="algorithmSelect" class="wordlist-select">
+                    <option value="md5">MD5</option>
+                    <option value="sha1">SHA1</option>
+                    <option value="sha256">SHA256</option>
+                    <option value="sha512">SHA512</option>
+                    <option value="sha224">SHA224</option>
+                    <option value="sha384">SHA384</option>
+                </select>
+            </div>
+            
+            <button id="generateButton" class="crack-button" onclick="generateHash()">
+                <i class="fas fa-hash"></i> Generate Hash
+            </button>
+            
+            <div class="input-group" id="generatedHashContainer" style="display: none; margin-top: 2rem;">
+                <label class="input-label">
+                    <i class="fas fa-key"></i> Generated Hash
+                </label>
+                <div class="generated-hash-display" id="generatedHash"></div>
+                <button class="copy-button" id="copyHashButton">
+                    <i class="fas fa-copy"></i> Copy Hash
+                </button>
+            </div>
         </div>
 
         <!-- Results Section -->
         <div id="resultsSection" class="results-section">
-            <h3 style="margin-top: 0; color: #333;">
+            <h3 style="margin-top: 2rem; color: #333;">
                 <i class="fas fa-trophy"></i> Cracking Results
             </h3>
             <div id="resultsContainer"></div>
@@ -398,8 +511,93 @@
     <!-- Initialize -->
     <script>
         // Initialize the global hash cracker instance
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs and contents
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    const tabName = this.getAttribute('data-tab');
+                    this.classList.add('active');
+                    document.getElementById(tabName + 'Tab').classList.add('active');
+                });
+            });
+            
+            // Setup copy hash button
+            const copyButton = document.getElementById('copyHashButton');
+            if (copyButton) {
+                copyButton.addEventListener('click', function() {
+                    const hash = document.getElementById('generatedHash').textContent;
+                    navigator.clipboard.writeText(hash)
+                        .then(() => {
+                            showNotification('Hash copied to clipboard', 'success');
+                        })
+                        .catch(err => {
+                            showNotification('Failed to copy hash', 'error');
+                        });
+                });
+            }
+        });
+        
+        // Generate hash function
+        function generateHash() {
+            const passwordInput = document.getElementById('passwordInput');
+            const algorithmSelect = document.getElementById('algorithmSelect');
+            const generatedHashContainer = document.getElementById('generatedHashContainer');
+            const generatedHashElement = document.getElementById('generatedHash');
+            
+            const password = passwordInput.value.trim();
+            const algorithm = algorithmSelect.value;
+            
+            if (!password) {
+                showNotification('Please enter text to hash', 'warning');
+                return;
+            }
+            
+            try {
+                const hash = window.hashCracker.generateHash(password, algorithm);
+                
+                generatedHashElement.textContent = hash;
+                generatedHashContainer.style.display = 'block';
+                
+                // Store in recent hashes
+                const recentHash = {
+                    original: password,
+                    hash: hash,
+                    algorithm: algorithm.toUpperCase(),
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Store recent hash in localStorage
+                try {
+                    let recentHashes = JSON.parse(localStorage.getItem('hashCrackGenerated') || '[]');
+                    recentHashes.unshift(recentHash);
+                    
+                    // Limit to last 20 generated hashes
+                    if (recentHashes.length > 20) {
+                        recentHashes = recentHashes.slice(0, 20);
+                    }
+                    
+                    localStorage.setItem('hashCrackGenerated', JSON.stringify(recentHashes));
+                } catch (error) {
+                    console.warn('[STORAGE] Could not save generated hash:', error);
+                }
+                
+                showNotification(`${algorithm.toUpperCase()} hash generated successfully`, 'success');
+                
+            } catch (error) {
+                showNotification(`Hash generation failed: ${error.message}`, 'error');
+                console.error('[ERROR] Hash generation failed:', error);
+            }
+        }
         window.hashCracker = new HashCracker();
-        console.log('[INIT] HashCrack Ultimate Platform initialized');
+        console.log('[INIT] HashCrack initialized');
     </script>
 </body>
 </html>

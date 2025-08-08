@@ -111,17 +111,32 @@ class HashCracker {
         
         // Load from files if available
         try {
-            await this.loadWordlistFromURL('common');
-            await this.loadWordlistFromURL('enhanced');
-            await this.loadWordlistFromURL('rockyou');
+            // Load available wordlists
+            await this.loadWordlistFromURL('10k');
+            await this.loadWordlistFromURL('100k');
+            
+            // Load rockyou parts and combine them
+            const rockyou1Loaded = await this.loadWordlistFromURL('rockyou1');
+            const rockyou2Loaded = await this.loadWordlistFromURL('rockyou2');
+            
+            // Combine rockyou parts if both loaded successfully
+            if (rockyou1Loaded && rockyou2Loaded) {
+                const rockyou1Words = this.wordlists.get('rockyou1') || [];
+                const rockyou2Words = this.wordlists.get('rockyou2') || [];
+                
+                // Combine and deduplicate
+                const combinedRockyou = [...new Set([...rockyou1Words, ...rockyou2Words])];
+                this.wordlists.set('rockyou', combinedRockyou);
+                console.log(`Created combined rockyou wordlist with ${combinedRockyou.length} unique words`);
+            }
         } catch (e) {
-            console.log('Using built-in wordlists');
+            console.log('Using built-in wordlists only');
         }
     }
 
     async loadWordlistFromURL(name) {
         try {
-            const response = await fetch(`./wordlists/${name}.txt`);
+            const response = await fetch(`wordlists/${name}.txt`);
             if (response.ok) {
                 const content = await response.text();
                 const words = content.split('\n')
@@ -131,9 +146,11 @@ class HashCracker {
                 this.wordlists.set(name, words);
                 console.log(`Loaded ${words.length} words from ${name}.txt`);
                 return true;
+            } else {
+                console.log(`Could not load ${name}.txt (Status: ${response.status})`);
             }
         } catch (e) {
-            console.log(`Could not load ${name}.txt`);
+            console.log(`Error loading ${name}.txt:`, e.message);
         }
         return false;
     }
@@ -300,13 +317,123 @@ class HashCracker {
         this.wordlists.set(name, words);
     }
 
-    // Get available wordlists
-    getWordlists() {
-        const lists = {};
-        this.wordlists.forEach((words, name) => {
-            lists[name] = words.length;
+    /**
+     * Crack a hash using a wordlist array
+     * @param {string} hash - The hash to crack
+     * @param {Array<string>} wordlist - Array of words to try
+     * @param {Object} options - Options including hashType and progress callback
+     * @returns {Promise<Object>} - Result object with found status and password if found
+     */
+    async crackHash(hash, wordlist, options = {}) {
+        if (this.isRunning) {
+            throw new Error('Already cracking a hash');
+        }
+        
+        // Handle options
+        const hashType = options.hashType || this.detectHashType(hash).type;
+        const onProgress = options.onProgress || (() => {});
+        
+        if (!this.supportedAlgorithms.includes(hashType.toLowerCase())) {
+            throw new Error(`Unsupported hash type: ${hashType}`);
+        }
+        
+        // Setup for cracking
+        this.isRunning = true;
+        this.startTime = performance.now();
+        
+        // Create a promise to track completion
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            let found = false;
+            let foundPassword = null;
+            let workersDone = 0;
+            
+            // Function to handle worker completion
+            const handleWorkerDone = () => {
+                workersDone++;
+                if (workersDone === this.workers.length && !found) {
+                    this.isRunning = false;
+                    resolve({ found: false, attempts });
+                }
+            };
+            
+            // Create event listeners for this job
+            const messageHandlers = [];
+            
+            this.workers.forEach((worker, index) => {
+                const wordsPerWorker = Math.ceil(wordlist.length / this.workers.length);
+                const startIndex = index * wordsPerWorker;
+                const endIndex = Math.min(startIndex + wordsPerWorker, wordlist.length);
+                
+                // Create a message handler for this worker
+                const messageHandler = (e) => {
+                    const { found: workerFound, password, processed } = e.data;
+                    
+                    if (workerFound) {
+                        found = true;
+                        foundPassword = password;
+                        
+                        // Clean up all workers
+                        this.workers.forEach((w, i) => {
+                            w.removeEventListener('message', messageHandlers[i]);
+                        });
+                        
+                        this.isRunning = false;
+                        resolve({ found: true, password, attempts });
+                    } else if (processed) {
+                        attempts += processed;
+                        
+                        // Calculate overall progress (0-1)
+                        const progress = attempts / wordlist.length;
+                        
+                        // Report progress
+                        onProgress(
+                            progress,
+                            `Checking passwords (${Math.floor(progress * 100)}%)`,
+                            attempts
+                        );
+                        
+                        // If this batch is done, check if all workers are done
+                        if (processed < wordsPerWorker) {
+                            handleWorkerDone();
+                        }
+                    }
+                };
+                
+                // Store message handler for cleanup
+                messageHandlers.push(messageHandler);
+                worker.addEventListener('message', messageHandler);
+                
+                // Start the worker
+                worker.postMessage({
+                    hashType: hashType,
+                    targetHash: hash,
+                    wordlist: wordlist.slice(startIndex, endIndex),
+                    startIndex: 0,
+                    endIndex: endIndex - startIndex
+                });
+            });
+            
+            // Timeout for very large wordlists
+            const timeoutMinutes = 30;
+            const timeout = setTimeout(() => {
+                if (this.isRunning) {
+                    this.isRunning = false;
+                    
+                    // Clean up all workers
+                    this.workers.forEach((worker, i) => {
+                        worker.removeEventListener('message', messageHandlers[i]);
+                    });
+                    
+                    resolve({ 
+                        found: false, 
+                        attempts,
+                        timeout: true,
+                        message: `Operation timed out after ${timeoutMinutes} minutes`
+                    });
+                }
+            }, timeoutMinutes * 60 * 1000);
         });
-        return lists;
     }
 }
 
