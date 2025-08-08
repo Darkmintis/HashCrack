@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    console.log(`[INIT] ${CONFIG.PLATFORM_NAME} ${CONFIG.VERSION} initialized`);
+    console.log(`[INFO] ${CONFIG.PLATFORM_NAME} ${CONFIG.VERSION} initialized successfully`);
     
     // Load stored results
     loadStoredResults();
@@ -37,13 +37,13 @@ function initializeApp() {
     
     // Check if CryptoJS and hash cracker are loaded
     if (typeof CryptoJS === 'undefined') {
-        console.error('[ERROR] CryptoJS not loaded');
+        console.error('[CRITICAL] CryptoJS library not loaded - hash operations unavailable');
         showNotification('CryptoJS library failed to load', 'error');
         return;
     }
     
     if (!window.hashCracker) {
-        console.error('[ERROR] Hash cracker not initialized');
+        console.error('[CRITICAL] Hash cracker module not initialized - core functionality unavailable');
         showNotification('Hash cracker failed to initialize', 'error');
         return;
     }
@@ -217,7 +217,7 @@ function setupFileUpload() {
                 localStorage.setItem(`wordlist_${customWordlistName}`, JSON.stringify(uniqueWords));
             }
         } catch (e) {
-            console.warn('[STORAGE] Could not save wordlist to localStorage:', e);
+            console.warn('[WARNING] Could not save wordlist to localStorage:', e.message);
         }
         
         // Add to select dropdown
@@ -233,6 +233,7 @@ function setupFileUpload() {
         // Add to hash cracker
         if (window.hashCracker) {
             window.hashCracker.addWordlist(customWordlistName, uniqueWords);
+            console.log(`[INFO] Custom wordlist added with ${uniqueWords.length.toLocaleString()} unique passwords`);
         }
     }
 }
@@ -272,7 +273,7 @@ window.startCracking = async function startCracking() {
     try {
         // Detect hash type
         const hashType = window.hashCracker.detectHashType(hashInput);
-        console.log(`[CRACK] Hash type detected: ${hashType.type} (${hashType.confidence}% confidence)`);
+        console.log(`[OPERATION] Starting crack attempt - Detected hash type: ${hashType.type} (${hashType.confidence}% confidence)`);
         
         showNotification(`Starting ${hashType.type} hash crack...`, 'info');
         updateProgress(5, `Detected ${hashType.type} hash`);
@@ -289,7 +290,7 @@ window.startCracking = async function startCracking() {
         
         for (const option of selectedOptions) {
             const wordlistName = option.value;
-            console.log(`[WORDLIST] Loading: ${wordlistName}`);
+            console.log(`[INFO] Loading wordlist: ${wordlistName}`);
             
             let words = [];
             
@@ -306,7 +307,7 @@ window.startCracking = async function startCracking() {
             
             if (words.length > 0) {
                 allWords = allWords.concat(words);
-                console.log(`[WORDLIST] Loaded ${words.length} words from ${wordlistName}`);
+                console.log(`[INFO] Loaded ${words.length.toLocaleString()} words from ${wordlistName}`);
             }
         }
         
@@ -317,7 +318,7 @@ window.startCracking = async function startCracking() {
         // Remove duplicates and filter
         const originalCount = allWords.length;
         allWords = [...new Set(allWords)].filter(word => word && word.trim());
-        console.log(`[WORDLIST] Total unique words: ${allWords.length} (removed ${originalCount - allWords.length} duplicates/empty entries)`);
+        console.log(`[INFO] Total unique passwords prepared: ${allWords.length.toLocaleString()} (removed ${(originalCount - allWords.length).toLocaleString()} duplicates/empty entries)`);
         
         updateProgress(20, `Loaded ${allWords.length.toLocaleString()} unique passwords`);
         
@@ -357,20 +358,23 @@ window.startCracking = async function startCracking() {
             
             addResult(newResult);
             
-            console.log(`[SUCCESS] Hash cracked in ${timeTaken}ms with ${result.attempts} attempts`);
+            console.log(`[SUCCESS] Hash cracked successfully in ${timeTaken}ms after ${result.attempts.toLocaleString()} attempts`);
             
         } else {
             // Not found
             const attemptStr = result.attempts?.toLocaleString() || 0;
-            const failureMessage = `No match found after trying ${attemptStr} passwords`;
+            const failureMessage = `Password not found in wordlist after trying ${attemptStr} passwords`;
             showNotification(failureMessage, 'warning');
+            
+            // Ensure progress bar shows 100% when complete, even if not found
             updateProgress(100, failureMessage);
-            console.log(`[FAILURE] Hash not found after ${result.attempts} attempts in ${timeTaken}ms`);
+            
+            console.log(`[OPERATION] Hash cracking completed - No matching password found after ${result.attempts.toLocaleString()} attempts in ${timeTaken}ms`);
             
             // Store result as "not found" for reference
             const newResult = {
                 hash: hashInput,
-                password: 'No match found',
+                password: 'Password not found in wordlist',
                 type: hashType.type,
                 attempts: result.attempts || 0,
                 time: timeTaken,
@@ -383,7 +387,7 @@ window.startCracking = async function startCracking() {
         }
         
     } catch (error) {
-        console.error('[ERROR] Cracking failed:', error);
+        console.error('[ERROR] Cracking operation failed:', error.message);
         showNotification(`Cracking failed: ${error.message}`, 'error');
         updateProgress(0, 'Error occurred');
     } finally {
@@ -443,11 +447,11 @@ async function loadBuiltInWordlist(name) {
             const text = await response.text();
             return text.split(/\r?\n/).filter(word => word.trim());
         } else {
-            console.warn(`[WORDLIST] Could not load ${name}.txt (Status: ${response.status})`);
+            console.warn(`[WARNING] Could not load wordlist ${name}.txt (HTTP Status: ${response.status})`);
             return [];
         }
     } catch (error) {
-        console.warn(`[WORDLIST] Error loading ${name}:`, error.message);
+        console.warn(`[WARNING] Error loading wordlist ${name}: ${error.message}`);
         return [];
     }
 }
@@ -460,7 +464,7 @@ function loadStoredResults() {
             AppState.results = JSON.parse(stored);
         }
     } catch (error) {
-        console.warn('[STORAGE] Could not load stored results:', error);
+        console.warn('[WARNING] Could not load stored results from localStorage:', error.message);
         AppState.results = [];
     }
 }
@@ -594,7 +598,7 @@ function updateProgress(percentage, status) {
 // Enhanced notification system
 function showNotification(message, type = 'info') {
     // Also log to console for debugging
-    console.log(`[${type.toUpperCase()}] ${message}`);
+    console.log(`[NOTIFICATION] ${type.toUpperCase()}: ${message}`);
     
     const container = document.getElementById('notificationContainer');
     if (!container) return;
@@ -632,7 +636,7 @@ document.addEventListener('keydown', function(e) {
     
     // Escape key to stop (if implemented in future)
     if (e.key === 'Escape' && AppState.isActive) {
-        console.log('[INPUT] Escape pressed - stopping would be implemented here');
+        console.log('[INPUT] Escape key detected - stopping operation would be implemented here');
     }
 });
 
@@ -647,4 +651,4 @@ window.HashCrackApp = {
     showNotification
 };
 
-console.log('[READY] HashCrack Ultimate Platform ready for use');
+console.log('[SYSTEM] HashCrack platform ready for operation');

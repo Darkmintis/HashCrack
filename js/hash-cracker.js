@@ -352,6 +352,13 @@ class HashCracker {
             const handleWorkerDone = () => {
                 workersDone++;
                 if (workersDone === this.workers.length && !found) {
+                    // Ensure final progress update before resolving
+                    onProgress(
+                        1.0,  // 100% progress
+                        `Checking passwords (100%) (${attempts.toLocaleString()} attempts)`,
+                        attempts
+                    );
+                    
                     this.isRunning = false;
                     resolve({ found: false, attempts });
                 }
@@ -389,7 +396,7 @@ class HashCracker {
                         // Report progress
                         onProgress(
                             progress,
-                            `Checking passwords (${Math.floor(progress * 100)}%)`,
+                            `Checking passwords (${Math.floor(progress * 100)}%) (${attempts.toLocaleString()} attempts)`,
                             attempts
                         );
                         
