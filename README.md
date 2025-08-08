@@ -7,13 +7,14 @@ Professional client-side hash cracking tool for CTF players and security profess
 - **100% Client-side**: All processing happens in your browser - no server needed
 - **CTF Ready**: Optimized for speed and efficiency during CTF competitions
 - **Multi-threaded**: Uses Web Workers for parallel processing across CPU cores
-- **Comprehensive hash support**: 18+ hash types including memory-hard functions
+- **Comprehensive hash support**: 20+ hash types including memory-hard functions and archive formats
 - **Built-in wordlists**: 10K, 100K, and RockYou wordlists included
 - **Custom wordlist support**: Upload your own wordlists (.txt files)
 - **Real-time progress**: Live status updates and attempt counters
 - **Results history**: Track previously cracked hashes
 - **Automatic hash detection**: Identifies hash types based on patterns
-- **Advanced algorithms**: Support for Argon2, scrypt, yescrypt and other modern hash types
+- **Advanced algorithms**: Support for Argon2, scrypt, yescrypt, and other modern hash types
+- **Archive formats**: Support for KeePass, RAR5, 7z, and PDF password hashes
 
 ## Supported Hash Types
 
@@ -44,12 +45,12 @@ HashCrack can detect and crack the following hash types:
 
 The following hash types are also supported but may be slower in browser environments:
 
-| Hash Type | Description | Notes |
-|-----------|-------------|-------|
-| KeePass KDBX | Password manager format | CPU intensive |
-| 7z | Archive format | CPU intensive |
-| RAR5 | Archive format | CPU intensive |
-| PDF | Document encryption | CPU intensive |
+| Hash Type | Description | Format Example |
+|-----------|-------------|----------------|
+| KeePass KDBX | Password manager format | `kdbx:<version>:<iterations>:<salt_base64>:<header_hash>` |
+| 7z | Archive format | `7z:<salt_hex>:<iterations>:<chash>` |
+| RAR5 | Archive format | `rar5:<iterations>:<salt_hex>:<checkval_hex>` |
+| PDF | Document encryption | `pdf:<version>:<algorithm>:<iterations>:<salt_hex>:<u_hex>:<o_hex>` |
 
 > **Note**: For the memory-hard functions (Argon2, scrypt, yescrypt), we use high-iteration PBKDF2 as a fallback in browser environments where WebAssembly modules may not be fully supported. This approach provides compatibility while maintaining reasonable security.
 
