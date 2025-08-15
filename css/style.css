@@ -1658,6 +1658,14 @@ h6 { font-size: 1rem; }
     transition: transform 0.3s ease;
     max-width: 400px;
     word-wrap: break-word;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.notification i {
+    margin-right: 10px;
+    font-size: 1.2em;
 }
 
 .notification.show {
