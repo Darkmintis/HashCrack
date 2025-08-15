@@ -13,11 +13,18 @@
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="ultimate-platform">
+<body class="platform" id="app-body">
     <!-- Platform Header -->
     <header class="platform-header">
-        <h1 class="platform-title"><i class="fas fa-unlock"></i> HashCrack</h1>
-        <p class="platform-subtitle">Professional Hash Cracking Tool for CTF Players</p>
+        <div class="header-left">
+            <h1 class="platform-title"><i class="fas fa-unlock"></i> HashCrack</h1>
+            <p class="platform-subtitle">Professional Hash Cracking Tool for CTF Players</p>
+        </div>
+        <div class="header-right">
+            <button id="themeToggle" class="theme-toggle" title="Toggle Theme">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
     </header>
 
     <!-- Main Container -->
@@ -37,75 +44,115 @@
                 <div class="stat-label">Avg. Time</div>
             </div>
         </div>
-
-        <!-- Hash Input -->
-        <div class="input-group">
-            <label for="hashInput" class="input-label">
-                <i class="fas fa-key"></i> Enter Hash to Crack
-            </label>
-            <input type="text" 
-                   id="hashInput" 
-                   class="hash-input" 
-                   placeholder="Enter MD5, SHA1, SHA256, SHA512, or other hash..."
-                   autocomplete="off">
-            <div id="hashDetection" class="hash-detection"></div>
-        </div>
-
-        <!-- Wordlist Selection -->
-        <div class="wordlist-section">
-            <!-- Built-in Wordlists -->
-            <div class="wordlist-built-in">
-                <label class="input-label">
-                    <i class="fas fa-list"></i> Built-in Wordlists
-                </label>
-                <select id="wordlistSelect" class="wordlist-select" multiple size="4">
-                    <option value="10k" selected>Common Passwords (10K)</option>
-                    <option value="100k">Extended Passwords (100K)</option>
-                    <option value="rockyou">RockYou</option>
-                </select>
-                <small class="wordlist-help">
-                    Hold Ctrl/Cmd to select multiple wordlists
-                </small>
-            </div>
-
-            <!-- Custom Wordlist Upload -->
-            <div class="wordlist-upload">
-                <label class="input-label">
-                    <i class="fas fa-upload"></i> Custom Wordlist
-                </label>
-                <div class="file-upload-area" id="fileUploadArea">
-                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                    <div>Drop your wordlist here or click to browse</div>
-                    <small class="upload-limit">Supports .txt files up to 500MB</small>
-                    <input type="file" id="wordlistFile" accept=".txt" class="hidden-file-input">
+        
+        <!-- Main Layout: Two Column Design -->
+        <div class="main-layout">
+            <!-- Left Column: Input and Progress -->
+            <div class="left-column">
+                <!-- Hash Input -->
+                <div class="input-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-key"></i> Hash Input</h3>
+                    </div>
+                    <div class="input-group">
+                        <label for="hashInput" class="input-label">
+                            Enter Hash to Crack
+                        </label>
+                        <input type="text" 
+                               id="hashInput" 
+                               class="hash-input" 
+                               placeholder="Enter MD5, SHA1, SHA256, SHA512, or other hash..."
+                               autocomplete="off">
+                        <div id="hashDetection" class="hash-detection"></div>
+                    </div>
                 </div>
-                <div id="uploadStatus" class="upload-status"></div>
+
+                <!-- Progress Section -->
+                <div class="progress-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-tasks"></i> Cracking Progress</h3>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-status" id="progressStatus">Ready to start...</div>
+                </div>
+                
+                <!-- Crack Button -->
+                <button id="crackButton" class="crack-button" onclick="startCracking()">
+                    <i class="fas fa-rocket"></i> Start Cracking
+                </button>
+            </div>
+            
+            <!-- Right Column: Wordlists and Options -->
+            <div class="right-column">
+                <!-- Wordlist Selection -->
+                <div class="wordlist-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-list"></i> Wordlists</h3>
+                    </div>
+                    <!-- Built-in Wordlists -->
+                    <div class="wordlist-built-in">
+                        <label class="input-label">
+                            Built-in Wordlists
+                        </label>
+                        <select id="wordlistSelect" class="wordlist-select" multiple size="4">
+                            <option value="10k" selected>Common Passwords (10K)</option>
+                            <option value="100k">Extended Passwords (100K)</option>
+                            <option value="rockyou">RockYou</option>
+                        </select>
+                        <small class="wordlist-help">
+                            Hold Ctrl/Cmd to select multiple wordlists
+                        </small>
+                    </div>
+
+                    <!-- Custom Wordlist Upload -->
+                    <div class="wordlist-upload">
+                        <label class="input-label">
+                            <i class="fas fa-upload"></i> Custom Wordlist
+                        </label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <div>Drop your wordlist here or click to browse</div>
+                            <small class="upload-limit">Supports .txt files up to 500MB</small>
+                            <input type="file" id="wordlistFile" accept=".txt" class="hidden-file-input">
+                        </div>
+                        <div id="uploadStatus" class="upload-status"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Crack Button -->
-        <button id="crackButton" class="crack-button" onclick="startCracking()">
-            <i class="fas fa-rocket"></i> Start Cracking
-        </button>
-
-        <!-- Progress Section -->
-        <div id="progressSection" class="progress-section">
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar"></div>
+        <!-- Results Section - Below main layout -->
+        <div id="resultsSection" class="history-section">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-trophy"></i> Cracking Results
+                    <span id="resultCount" class="info-badge">0</span>
+                </h3>
+                <button class="toggle-history active" id="toggleResults" title="Toggle Results">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
             </div>
-            <div class="progress-status" id="progressStatus">Ready to start...</div>
-        </div>
-
-        <!-- Results Section -->
-        <div id="resultsSection" class="results-section">
-            <h3>
-                <i class="fas fa-trophy"></i> Cracking Results
-                <span id="resultCount" class="info-badge">0</span>
-            </h3>
-            <div id="resultsContainer"></div>
-            <div id="noResultsMessage" class="no-results">
-                <i class="fas fa-info-circle"></i>
-                <p>No cracking results yet. Enter a hash above and click "Start Cracking" to begin.</p>
+            <div id="resultsContent" class="history-content">
+                <table class="history-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Password</th>
+                            <th>Algorithm</th>
+                            <th>Time</th>
+                            <th>Attempts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsContainer">
+                        <!-- Will be populated with cracking results -->
+                    </tbody>
+                </table>
+                <div id="noResultsMessage" class="no-history-message">
+                    <i class="fas fa-info-circle"></i>
+                    <p>No cracking results yet. Enter a hash above and click "Start Cracking" to begin.</p>
+                </div>
             </div>
         </div>
     </div>

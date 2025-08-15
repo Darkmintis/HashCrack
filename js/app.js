@@ -13,7 +13,8 @@ const CONFIG = {
 const AppState = {
     results: [],
     isActive: false,
-    customWordlists: new Map()
+    customWordlists: new Map(),
+    darkMode: false
 };
 
 // Utility function for logging
@@ -25,6 +26,8 @@ function logMessage(type, message) {
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupFileUpload();
+    setupEventListeners();
+    loadSettings();
 });
 
 function initializeApp() {
@@ -594,8 +597,8 @@ function updateResultsDisplay() {
         const date = new Date(result.timestamp).toLocaleString();
         
         // Format hash with proper handling for different lengths
-        const hashDisplay = result.hash.length > 50 
-            ? `${result.hash.substring(0, 50)}...` 
+        const hashDisplay = result.hash.length > 40 
+            ? `${result.hash.substring(0, 40)}...` 
             : result.hash;
         
         // Format time to be more human-readable
@@ -605,28 +608,16 @@ function updateResultsDisplay() {
             
         // Determine success or failure styling
         const isSuccess = result.found !== false;
-        const resultClass = isSuccess ? 'success' : 'failure';
         const passwordClass = isSuccess ? 'found' : 'not-found';
         
         return `
-            <div class="result-item ${resultClass}">
-                <div class="result-hash" title="${result.hash}">${hashDisplay}</div>
-                <div class="result-password ${passwordClass}">${result.password}</div>
-                <div class="result-details">
-                    <div class="result-detail-item">
-                        <i class="fas fa-fingerprint"></i> ${result.type}
-                    </div>
-                    <div class="result-detail-item">
-                        <i class="fas fa-tachometer-alt"></i> ${result.attempts?.toLocaleString() || 0} attempts
-                    </div>
-                    <div class="result-detail-item">
-                        <i class="fas fa-clock"></i> ${timeDisplay}
-                    </div>
-                    <div class="result-detail-item">
-                        <i class="fas fa-calendar-alt"></i> ${date}
-                    </div>
-                </div>
-            </div>
+            <tr>
+                <td class="history-hash" title="${result.hash}">${hashDisplay}</td>
+                <td class="${passwordClass}">${result.password}</td>
+                <td>${result.type}</td>
+                <td>${timeDisplay}</td>
+                <td>${result.attempts?.toLocaleString() || 0}</td>
+            </tr>
         `;
     }).join('');
 }
@@ -701,6 +692,100 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Setup event listeners
+function setupEventListeners() {
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleDarkMode);
+    }
+    
+    // Results toggle
+    const toggleResultsBtn = document.getElementById('toggleResults');
+    const resultsContent = document.getElementById('resultsContent');
+    if (toggleResultsBtn && resultsContent) {
+        // Initially set the toggle icon to up since content is visible by default
+        toggleResultsBtn.querySelector('i').classList.remove('fa-chevron-down');
+        toggleResultsBtn.querySelector('i').classList.add('fa-chevron-up');
+        toggleResultsBtn.classList.add('active');
+        
+        toggleResultsBtn.addEventListener('click', () => {
+            resultsContent.classList.toggle('hidden');
+            toggleResultsBtn.classList.toggle('active');
+            toggleResultsBtn.querySelector('i').classList.toggle('fa-chevron-up');
+            toggleResultsBtn.querySelector('i').classList.toggle('fa-chevron-down');
+        });
+    }
+}
+
+// Toggle dark mode
+function toggleDarkMode() {
+    AppState.darkMode = !AppState.darkMode;
+    document.body.classList.toggle('dark-mode', AppState.darkMode);
+    
+    // Update icon
+    const themeIcon = document.querySelector('#themeToggle i');
+    if (themeIcon) {
+        themeIcon.className = AppState.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+    }
+    
+    // Save preference
+    saveSettings();
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    try {
+        localStorage.setItem(
+            'hashCrackSettings',
+            JSON.stringify({
+                darkMode: AppState.darkMode
+            })
+        );
+    } catch (e) {
+        console.error('Failed to save settings:', e);
+    }
+}
+
+// Load settings from localStorage
+function loadSettings() {
+    try {
+        const storedSettings = localStorage.getItem('hashCrackSettings');
+        if (storedSettings) {
+            const settings = JSON.parse(storedSettings);
+            
+            // Apply dark mode if needed
+            if (settings.darkMode) {
+                AppState.darkMode = true;
+                document.body.classList.add('dark-mode');
+                
+                // Update icon
+                const themeIcon = document.querySelector('#themeToggle i');
+                if (themeIcon) {
+                    themeIcon.className = 'fas fa-sun';
+                }
+            }
+        } else {
+            // Check for system preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                AppState.darkMode = true;
+                document.body.classList.add('dark-mode');
+                
+                // Update icon
+                const themeIcon = document.querySelector('#themeToggle i');
+                if (themeIcon) {
+                    themeIcon.className = 'fas fa-sun';
+                }
+                
+                // Save setting
+                saveSettings();
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+}
+
 // Export for debugging
 window.HashCrackApp = {
     config: CONFIG,
@@ -709,7 +794,8 @@ window.HashCrackApp = {
     updateStats,
     updateResultsDisplay,
     loadBuiltInWordlist,
-    showNotification
+    showNotification,
+    toggleDarkMode
 };
 
 // Silent startup to reduce console noise
