@@ -234,23 +234,3 @@ This tool is intended for legitimate security testing, CTF competitions, and edu
 ## 📄 **License**
 
 MIT License - Use, modify, and distribute freely!
-
-## 🤝 **Contributing**
-
-This platform is designed to be the ultimate hash cracking solution. Contributions welcome:
-
-- 🐛 Bug reports and fixes
-- 💡 Feature suggestions  
-- 🔧 Performance improvements
-- 📚 Additional wordlists
-- 🎨 UI/UX enhancements
-
----
-
-<div align="center">
-
-**🔓 HashCrack Ultimate - The Last Hash Cracker You'll Ever Need! 🔓**
-
-*Built with ❤️ for the cybersecurity community*
-
-</div>
