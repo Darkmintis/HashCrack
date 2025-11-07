@@ -579,61 +579,6 @@ h6 { font-size: 1rem; }
     background-color: var(--gray-300);
 }
 
-/* History Section */
-.history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-}
-
-.history-table th,
-.history-table td {
-    padding: var(--space-xs) var(--space-sm);
-    text-align: left;
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.history-table th {
-    font-weight: 600;
-    color: var(--gray-700);
-}
-
-.history-input,
-.history-algorithm,
-.history-hash {
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.history-actions {
-    display: flex;
-    gap: var(--space-xs);
-    white-space: nowrap;
-}
-
-.history-button {
-    background: none;
-    border: none;
-    color: var(--gray-600);
-    cursor: pointer;
-    padding: var(--space-xs);
-    font-size: 0.8rem;
-    transition: color var(--transition-fast);
-}
-
-.history-button:hover {
-    color: var(--primary-600);
-}
-
-.no-history-message {
-    text-align: center;
-    padding: var(--space-md) 0;
-    color: var(--gray-500);
-    font-size: 0.8rem;
-}
-
 /* Notifications */
 #notificationContainer {
     position: fixed;

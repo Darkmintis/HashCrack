@@ -51,10 +51,9 @@ function initializeApp() {
         return;
     }
     
-    if (!window.hashCracker) {
+    if (!globalThis.hashCracker) {
         console.error('[CRITICAL] Hash cracker module not initialized - core functionality unavailable');
         showNotification('Hash cracker failed to initialize', 'error');
-        return;
     }
     
     // Silent success to reduce console noise
@@ -82,8 +81,8 @@ function setupHashDetection() {
         // Wait for user to stop typing
         typingTimer = setTimeout(() => {
             const hash = hashInput.value.trim();
-            if (hash && window.hashCracker) {
-                const detection = window.hashCracker.detectHashType(hash);
+            if (hash && globalThis.hashCracker) {
+                const detection = globalThis.hashCracker.detectHashType(hash);
                 
                 if (detection.confidence > 50) {
                     hashDetection.innerHTML = `
@@ -93,8 +92,7 @@ function setupHashDetection() {
                     `;
                     
                     // Check if this is an advanced algorithm that may be slower
-                    if (window.hashCracker.advancedAlgorithms && 
-                        window.hashCracker.advancedAlgorithms.includes(detection.type.toLowerCase())) {
+                    if (globalThis.hashCracker.advancedAlgorithms?.includes(detection.type.toLowerCase())) {
                         hashDetection.innerHTML += `
                             <div class="info-text">
                                 <i class="fas fa-info-circle"></i>
@@ -229,7 +227,22 @@ function setupFileUpload() {
                 showNotification('Failed to read wordlist file', 'error');
             };
             
-            reader.readAsText(chunk);
+            // Use Blob.text() instead of FileReader.readAsText()
+            chunk.text().then(text => {
+                const chunkWords = text.split(/\r?\n/)
+                    .map(word => word.trim())
+                    .filter(word => word.length > 0);
+                
+                // Add unique words to the list
+                words = [...words, ...chunkWords];
+                wordCount += chunkWords.length;
+                
+                // Read next chunk
+                readNextChunk(start + chunkSize);
+            }).catch(() => {
+                uploadStatus.textContent = 'Error reading file';
+                showNotification('Failed to read wordlist file', 'error');
+            });
         }
         
         // Start reading chunks
@@ -263,15 +276,15 @@ function setupFileUpload() {
         showNotification(`Custom wordlist loaded with ${uniqueWords.length.toLocaleString()} words`, 'success');
         
         // Add to hash cracker
-        if (window.hashCracker) {
-            window.hashCracker.addWordlist(customWordlistName, uniqueWords);
+        if (globalThis.hashCracker) {
+            globalThis.hashCracker.addWordlist(customWordlistName, uniqueWords);
             console.log(`[INFO] Custom wordlist added with ${uniqueWords.length.toLocaleString()} unique passwords`);
         }
     }
 }
 
 // Main hash cracking function
-window.startCracking = async function startCracking() {
+globalThis.startCracking = async function startCracking() {
     if (AppState.isActive) {
         showNotification('Cracking already in progress', 'warning');
         return;
@@ -292,7 +305,7 @@ window.startCracking = async function startCracking() {
         return;
     }
     
-    if (!window.hashCracker) {
+    if (!globalThis.hashCracker) {
         showNotification('Hash cracker not available', 'error');
         return;
     }
@@ -304,7 +317,7 @@ window.startCracking = async function startCracking() {
     
     try {
         // Detect hash type
-        const hashType = window.hashCracker.detectHashType(hashInput);
+        const hashType = globalThis.hashCracker.detectHashType(hashInput);
         console.log(`[OPERATION] Starting crack attempt - Detected hash type: ${hashType.type} (${hashType.confidence}% confidence)`);
         
         showNotification(`Starting ${hashType.type} hash crack...`, 'info');
@@ -349,7 +362,7 @@ window.startCracking = async function startCracking() {
         
         // Remove duplicates and filter
         const originalCount = allWords.length;
-        allWords = [...new Set(allWords)].filter(word => word && word.trim());
+        allWords = [...new Set(allWords)].filter(word => word?.trim());
         console.log(`[INFO] Total unique passwords prepared: ${allWords.length.toLocaleString()} (removed ${(originalCount - allWords.length).toLocaleString()} duplicates/empty entries)`);
         
         updateProgress(20, `Loaded ${allWords.length.toLocaleString()} unique passwords`);
@@ -362,7 +375,7 @@ window.startCracking = async function startCracking() {
         
         // Start the cracking process
         const startTime = performance.now();
-        const result = await window.hashCracker.crackHash(hashInput, allWords, {
+        const result = await globalThis.hashCracker.crackHash(hashInput, allWords, {
             onProgress: progressCallback,
             hashType: hashType.type
         });
@@ -574,6 +587,15 @@ function updateResultsDisplay() {
     
     if (!resultsContainer || !resultsSection) return;
     
+// Update results display
+function updateResultsDisplay() {
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultsSection = document.getElementById('resultsSection');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const resultCount = document.getElementById('resultCount');
+    
+    if (!resultsContainer || !resultsSection) return;
+    
     // Update the result count badge
     if (resultCount) {
         resultCount.textContent = AppState.results.length;
@@ -594,8 +616,6 @@ function updateResultsDisplay() {
     }
     
     resultsContainer.innerHTML = AppState.results.map(result => {
-        const date = new Date(result.timestamp).toLocaleString();
-        
         // Format hash with proper handling for different lengths
         const hashDisplay = result.hash.length > 40 
             ? `${result.hash.substring(0, 40)}...` 
@@ -653,9 +673,14 @@ function showNotification(message, type = 'info') {
     notification.className = `notification ${type}`;
     
     // Add appropriate icon based on notification type
-    const iconClass = type === 'success' ? 'fa-check-circle' : 
-                     type === 'error' ? 'fa-exclamation-circle' : 
-                     type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    const getIconClass = (notificationType) => {
+        if (notificationType === 'success') return 'fa-check-circle';
+        if (notificationType === 'error') return 'fa-exclamation-circle';
+        if (notificationType === 'warning') return 'fa-exclamation-triangle';
+        return 'fa-info-circle';
+    };
+    
+    const iconClass = getIconClass(type);
     
     notification.innerHTML = `<i class="fas ${iconClass}"></i> ${message}`;
     
@@ -665,12 +690,18 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notification.classList.add('show'), 100);
     
     // Auto remove after duration based on type
-    const duration = type === 'error' ? 8000 : type === 'success' ? 6000 : 5000;
+    const getDuration = (notificationType) => {
+        if (notificationType === 'error') return 8000;
+        if (notificationType === 'success') return 6000;
+        return 5000;
+    };
+    
+    const duration = getDuration(type);
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
             if (container.contains(notification)) {
-                container.removeChild(notification);
+                notification.remove();
             }
         }, 300);
     }, duration);
@@ -764,22 +795,23 @@ function loadSettings() {
                 if (themeIcon) {
                     themeIcon.className = 'fas fa-sun';
                 }
-            }
-        } else {
-            // Check for system preference
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                AppState.darkMode = true;
-                document.body.classList.add('dark-mode');
-                
-                // Update icon
-                const themeIcon = document.querySelector('#themeToggle i');
-                if (themeIcon) {
-                    themeIcon.className = 'fas fa-sun';
-                }
                 
                 // Save setting
                 saveSettings();
             }
+        } else if (globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+            // Check for system preference
+            AppState.darkMode = true;
+            document.body.classList.add('dark-mode');
+            
+            // Update icon
+            const themeIcon = document.querySelector('#themeToggle i');
+            if (themeIcon) {
+                themeIcon.className = 'fas fa-sun';
+            }
+            
+            // Save setting
+            saveSettings();
         }
     } catch (e) {
         console.error('Failed to load settings:', e);
@@ -787,7 +819,7 @@ function loadSettings() {
 }
 
 // Export for debugging
-window.HashCrackApp = {
+globalThis.HashCrackApp = {
     config: CONFIG,
     state: AppState,
     addResult,
@@ -797,6 +829,4 @@ window.HashCrackApp = {
     showNotification,
     toggleDarkMode
 };
-
-// Silent startup to reduce console noise
-// console.log('[SYSTEM] HashCrack platform ready for operation');
+}

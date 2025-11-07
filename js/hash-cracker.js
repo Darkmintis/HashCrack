@@ -10,27 +10,32 @@
  */
 
 class HashCracker {
+    isRunning = false;
+    currentJob = null;
+    hashesPerSecond = 0;
+    startTime = null;
+    workers = [];
+    wordlists = new Map();
+    supportedAlgorithms = [
+        'md5', 'sha1', 'sha256', 'sha512', 'sha224', 'sha384',
+        'mysql-sha1', 'ntlm', 'pbkdf2', 'md5-crypt', 'sha-256-crypt', 
+        'sha-512-crypt', 'bcrypt', 'netntlmv2', 'wpa-pmkid', 
+        'yescrypt', 'argon2', 'scrypt'
+    ];
+    
+    // These algorithms are implemented but may be slower in browser environment
+    advancedAlgorithms = [
+        'keepass-kdbx', 'rar5', '7z', 'pdf'
+    ];
+    
     constructor() {
-        this.isRunning = false;
-        this.currentJob = null;
-        this.hashesPerSecond = 0;
-        this.startTime = null;
-        this.workers = [];
-        this.wordlists = new Map();
-        this.supportedAlgorithms = [
-            'md5', 'sha1', 'sha256', 'sha512', 'sha224', 'sha384',
-            'mysql-sha1', 'ntlm', 'pbkdf2', 'md5-crypt', 'sha-256-crypt', 
-            'sha-512-crypt', 'bcrypt', 'netntlmv2', 'wpa-pmkid', 
-            'yescrypt', 'argon2', 'scrypt'
-        ];
-        
-        // These algorithms are implemented but may be slower in browser environment
-        this.advancedAlgorithms = [
-            'keepass-kdbx', 'rar5', '7z', 'pdf'
-        ];
-        
-        this.loadBuiltInWordlists();
         this.initializeWorkers();
+        // Load wordlists after construction
+        this.init();
+    }
+    
+    async init() {
+        await this.loadBuiltInWordlists();
     }
     
     // Logger function for consistent logging
@@ -49,7 +54,7 @@ class HashCracker {
             
             // Add error handler for worker
             worker.onerror = (err) => {
-                this.log('error', 'Worker error:', err && err.message ? err.message : 'Unknown worker error');
+                this.log('error', 'Worker error:', err?.message ?? 'Unknown worker error');
                 // Continue operation - don't crash the entire application for a worker error
             };
             
@@ -90,7 +95,7 @@ class HashCracker {
                             // Parse the bcrypt hash format
                             const parts = hash.split('$');
                             if (parts.length >= 4) {
-                                const cost = parseInt(parts[2].replace(/^0+/, ''), 10);
+                                const cost = Number.parseInt(parts[2].replace(/^0+/, ''), 10);
                                 const salt = parts[3].split('.')[0];
                                 
                                 // Use PBKDF2 with cost factor
@@ -122,7 +127,7 @@ class HashCracker {
                             // Extract cost from salt
                             const parts = salt.split('$');
                             if (parts.length >= 3) {
-                                const cost = parseInt(parts[2].replace(/^0+/, ''), 10);
+                                const cost = Number.parseInt(parts[2].replace(/^0+/, ''), 10);
                                 const saltValue = parts.length > 3 ? parts[3] : 'defaultsalt';
                                 
                                 // Use PBKDF2 with cost factor
@@ -416,7 +421,7 @@ class HashCracker {
                         try {
                             const parts = targetHash.split('$');
                             if (parts.length >= 4) {
-                                const cost = parseInt(parts[2].replace(/^0+/, ''), 10);
+                                const cost = Number.parseInt(parts[2].replace(/^0+/, ''), 10);
                                 const salt = parts[3].split('.')[0];
                                 
                                 // Use PBKDF2 with cost factor
@@ -513,16 +518,16 @@ class HashCracker {
                                 if (parts[2].includes('=')) {
                                     parts[2].split(',').forEach(p => {
                                         const [key, value] = p.split('=');
-                                        params[key] = parseInt(value, 10);
+                                        params[key] = Number.parseInt(value, 10);
                                     });
                                 } else if (parts[2].startsWith('v=')) {
-                                    params.v = parseInt(parts[2].substring(2), 10);
+                                    params.v = Number.parseInt(parts[2].substring(2), 10);
                                     
                                     // Parse next parts
                                     const paramParts = parts[3].split(',');
                                     paramParts.forEach(p => {
                                         const [key, value] = p.split('=');
-                                        params[key] = parseInt(value, 10);
+                                        params[key] = Number.parseInt(value, 10);
                                     });
                                 }
                                 
@@ -581,7 +586,7 @@ class HashCracker {
                                 if (part.includes('t=')) {
                                     const tParam = part.split(',').find(p => p.startsWith('t='));
                                     if (tParam) {
-                                        time = parseInt(tParam.split('=')[1], 10);
+                                        time = Number.parseInt(tParam.split('=')[1], 10);
                                     }
                                 }
                             });
@@ -648,9 +653,9 @@ class HashCracker {
                             if (parts.length >= 4) {
                                 // Parse parameters
                                 const params = parts[2].split(',');
-                                const N = parseInt(params[0], 16); // Usually a power of 2
-                                const r = parseInt(params[1], 16); // Usually 8
-                                const p = parseInt(params[2], 16); // Usually 1
+                                const N = Number.parseInt(params[0], 16); // Usually a power of 2
+                                const r = Number.parseInt(params[1], 16); // Usually 8
+                                const p = Number.parseInt(params[2], 16); // Usually 1
                                 const salt = parts[3];
                                 
                                 // Use our synchronous version
@@ -770,7 +775,7 @@ class HashCracker {
                                 if (targetHash.startsWith('$pbkdf2')) {
                                     const parts = targetHash.split('$');
                                     if (parts.length >= 5) {
-                                        const iterations = parseInt(parts[2], 10);
+                                        const iterations = Number.parseInt(parts[2], 10);
                                         const salt = parts[3];
                                         const derivedKey = CryptoJS.PBKDF2(word, salt, { 
                                             keySize: 64/4, 
@@ -801,7 +806,7 @@ class HashCracker {
     }
 
     handleWorkerMessage(e) {
-        const { found, password, hash, processed, error, algorithm, message, word } = e.data;
+        const { found, password, hash, processed, error, algorithm, message } = e.data;
         
         if (found) {
             this.stopCracking();
@@ -875,8 +880,8 @@ class HashCracker {
                 // console.log(`Created combined rockyou wordlist with ${combinedRockyou.length} unique words`);
             }
         } catch (e) {
-            // Silent fallback to reduce console noise
-            // console.log('Using built-in wordlists only');
+            // Log warning about using built-in wordlists only
+            this.log('warn', 'Using built-in wordlists only:', e.message);
         }
     }
 
@@ -1012,7 +1017,8 @@ class HashCracker {
         // Distribute work across workers
         const wordsPerWorker = Math.ceil(wordlist.length / this.workers.length);
         
-        this.workers.forEach((worker, index) => {
+        for (let index = 0; index < this.workers.length; index++) {
+            const worker = this.workers[index];
             const startIndex = index * wordsPerWorker;
             const endIndex = Math.min(startIndex + wordsPerWorker, wordlist.length);
             
@@ -1023,12 +1029,14 @@ class HashCracker {
                 startIndex: startIndex,
                 endIndex: endIndex
             });
-        });
+        }
     }
 
     stopCracking() {
         this.isRunning = false;
-        this.workers.forEach(worker => worker.terminate());
+        for (const worker of this.workers) {
+            worker.terminate();
+        }
         this.initializeWorkers(); // Recreate workers
         this.updateUI('stopped');
     }
@@ -1156,7 +1164,6 @@ class HashCracker {
         return new Promise((resolve, reject) => {
             let attempts = 0;
             let found = false;
-            let foundPassword = null;
             let workersDone = 0;
             
             // Function to handle worker completion
@@ -1165,7 +1172,7 @@ class HashCracker {
                 if (workersDone === this.workers.length && !found) {
                     // Ensure final progress update before resolving
                     onProgress(
-                        1.0,  // 100% progress
+                        1,  // 100% progress
                         `Checking passwords (100%) (${attempts.toLocaleString()} attempts)`,
                         attempts
                     );
@@ -1175,171 +1182,11 @@ class HashCracker {
                 }
             };
             
-            // Hash type implementations
-            const hashMethods = {
-                // KeePass KDBX implementation
-                'keepass-kdbx': function(word, targetHash) {
-                    // KeePass format parsing
-                    if (targetHash.startsWith('kdbx:')) {
-                        try {
-                            // Parse the hash format
-                            // Expected format: kdbx:<version>:<iterations>:<salt_base64>:<header_hash>
-                            const parts = targetHash.substring(5).split(':');
-                            if (parts.length >= 4) {
-                                const version = parseInt(parts[0], 10);
-                                const iterations = parseInt(parts[1], 10);
-                                const salt = parts[2];
-                                const headerHash = parts[3];
-                                
-                                // Different KeePass versions use different algorithms
-                                let derivedKey;
-                                if (version >= 4) {
-                                    // KeePass 2.x uses AES-KDF (a variation of PBKDF2)
-                                    derivedKey = CryptoJS.PBKDF2(word, CryptoJS.enc.Base64.parse(salt), {
-                                        keySize: 256/32,
-                                        iterations: iterations,
-                                        hasher: CryptoJS.algo.SHA256
-                                    });
-                                } else {
-                                    // Legacy KeePass used a different KDF
-                                    derivedKey = CryptoJS.SHA256(word + salt);
-                                    for (let i = 0; i < iterations; i++) {
-                                        derivedKey = CryptoJS.SHA256(derivedKey);
-                                    }
-                                }
-                                
-                                // Final step - calculate the header verification hash
-                                // We don't have the actual header data, so we'll use our fingerprinting approach
-                                const mock = derivedKey.toString() + salt;
-                                const resultHash = CryptoJS.SHA256(mock).toString().substring(0, 16);
-                                
-                                // Compare with the provided header hash (first 16 chars)
-                                return resultHash === headerHash.substring(0, 16);
-                            }
-                        } catch (e) {
-                            this.log('error', 'KeePass error:', e);
-                        }
-                    }
-                    return false;
-                },
-                
-                // RAR5 implementation
-                'rar5': function(word, targetHash) {
-                    // RAR5 format parsing
-                    if (targetHash.startsWith('rar5:')) {
-                        try {
-                            // Parse the hash format
-                            // Expected format: rar5:<iterations>:<salt_hex>:<checkval_hex>
-                            const parts = targetHash.substring(5).split(':');
-                            if (parts.length >= 3) {
-                                const iterations = parseInt(parts[0], 10);
-                                const salt = parts[1];
-                                const checkValue = parts[2];
-                                
-                                // RAR5 uses PBKDF2-HMAC-SHA256
-                                const derivedKey = CryptoJS.PBKDF2(word, CryptoJS.enc.Hex.parse(salt), {
-                                    keySize: 256/32,
-                                    iterations: iterations,
-                                    hasher: CryptoJS.algo.SHA256
-                                });
-                                
-                                // Calculate verification value
-                                // In real RAR5, there's more to it, but we simulate with a SHA256 hash
-                                const checkValue1 = CryptoJS.SHA256(derivedKey.toString() + salt).toString().substring(0, 8);
-                                const checkValue2 = CryptoJS.SHA256(derivedKey.toString() + salt + checkValue1).toString().substring(0, 16);
-                                
-                                // Compare with provided check value
-                                return checkValue2 === checkValue;
-                            }
-                        } catch (e) {
-                            console.error('RAR5 error:', e);
-                        }
-                    }
-                    return false;
-                },
-                
-                // 7z implementation
-                '7z': function(word, targetHash) {
-                    // 7z format parsing
-                    if (targetHash.startsWith('7z:')) {
-                        try {
-                            // Parse the hash format
-                            // Expected format: 7z:<salt_hex>:<iterations>:<chash>
-                            const parts = targetHash.substring(3).split(':');
-                            if (parts.length >= 3) {
-                                const salt = parts[0];
-                                const iterations = parseInt(parts[1], 10);
-                                const cipherHash = parts[2];
-                                
-                                // 7z uses SHA256 for key derivation
-                                let key = CryptoJS.SHA256(word + CryptoJS.enc.Hex.parse(salt));
-                                for (let i = 0; i < iterations; i++) {
-                                    key = CryptoJS.SHA256(i.toString() + key);
-                                }
-                                
-                                // Calculate verification value
-                                const verificationHash = CryptoJS.SHA256(key.toString() + salt).toString().substring(0, 16);
-                                
-                                // Compare with the provided cipher hash
-                                return verificationHash === cipherHash.substring(0, 16);
-                            }
-                        } catch (e) {
-                            console.error('7z error:', e);
-                        }
-                    }
-                    return false;
-                },
-                
-                // PDF implementation
-                'pdf': function(word, targetHash) {
-                    // PDF format parsing
-                    if (targetHash.startsWith('pdf:')) {
-                        try {
-                            // Parse the hash format
-                            // Expected format: pdf:<version>:<algorithm>:<iterations>:<salt_hex>:<u_hex>:<o_hex>
-                            const parts = targetHash.substring(4).split(':');
-                            if (parts.length >= 6) {
-                                const version = parseInt(parts[0], 10);
-                                const algorithm = parts[1]; // Usually 'rc4' or 'aes'
-                                const iterations = parseInt(parts[2], 10);
-                                const salt = parts[3];
-                                const u_value = parts[4];
-                                const o_value = parts[5];
-                                
-                                // Different PDF versions use different algorithms
-                                let derivedKey;
-                                if (version <= 4) {
-                                    // RC4 or early AES - uses a simple MD5 iteration
-                                    derivedKey = CryptoJS.MD5(word + salt);
-                                    for (let i = 0; i < iterations; i++) {
-                                        derivedKey = CryptoJS.MD5(derivedKey);
-                                    }
-                                } else {
-                                    // PDF 1.7 and later - uses SHA256
-                                    derivedKey = CryptoJS.SHA256(word + salt);
-                                    for (let i = 0; i < iterations; i++) {
-                                        derivedKey = CryptoJS.SHA256(derivedKey);
-                                    }
-                                }
-                                
-                                // Calculate user password verification hash
-                                const checkValue = CryptoJS.SHA256(derivedKey.toString() + u_value).toString().substring(0, 16);
-                                
-                                // Compare with the first 16 chars of O value
-                                return checkValue === o_value.substring(0, 16);
-                            }
-                        } catch (e) {
-                            console.error('PDF error:', e);
-                        }
-                    }
-                    return false;
-                }
-            };
-            
             // Create event listeners for this job
             const messageHandlers = [];
             
-            this.workers.forEach((worker, index) => {
+            for (let index = 0; index < this.workers.length; index++) {
+                const worker = this.workers[index];
                 const wordsPerWorker = Math.ceil(wordlist.length / this.workers.length);
                 const startIndex = index * wordsPerWorker;
                 const endIndex = Math.min(startIndex + wordsPerWorker, wordlist.length);
@@ -1350,12 +1197,11 @@ class HashCracker {
                     
                     if (workerFound) {
                         found = true;
-                        foundPassword = password;
                         
                         // Clean up all workers
-                        this.workers.forEach((w, i) => {
-                            w.removeEventListener('message', messageHandlers[i]);
-                        });
+                        for (let i = 0; i < this.workers.length; i++) {
+                            this.workers[i].removeEventListener('message', messageHandlers[i]);
+                        }
                         
                         this.isRunning = false;
                         resolve({ found: true, password, attempts });
@@ -1391,18 +1237,18 @@ class HashCracker {
                     startIndex: 0,
                     endIndex: endIndex - startIndex
                 });
-            });
+            }
             
             // Timeout for very large wordlists
             const timeoutMinutes = 30;
-            const timeout = setTimeout(() => {
+            setTimeout(() => {
                 if (this.isRunning) {
                     this.isRunning = false;
                     
                     // Clean up all workers
-                    this.workers.forEach((worker, i) => {
-                        worker.removeEventListener('message', messageHandlers[i]);
-                    });
+                    for (let i = 0; i < this.workers.length; i++) {
+                        this.workers[i].removeEventListener('message', messageHandlers[i]);
+                    }
                     
                     resolve({ 
                         found: false, 
@@ -1417,4 +1263,4 @@ class HashCracker {
 }
 
 // Global instance
-window.hashCracker = new HashCracker();
+globalThis.hashCracker = new HashCracker();
