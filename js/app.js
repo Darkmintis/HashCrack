@@ -582,19 +582,11 @@ function updateStats() {
 function updateResultsDisplay() {
     const resultsContainer = document.getElementById('resultsContainer');
     const resultsSection = document.getElementById('resultsSection');
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    const resultCount = document.getElementById('resultCount');
     
     if (!resultsContainer || !resultsSection) return;
     
-// Update results display
-function updateResultsDisplay() {
-    const resultsContainer = document.getElementById('resultsContainer');
-    const resultsSection = document.getElementById('resultsSection');
     const noResultsMessage = document.getElementById('noResultsMessage');
     const resultCount = document.getElementById('resultCount');
-    
-    if (!resultsContainer || !resultsSection) return;
     
     // Update the result count badge
     if (resultCount) {
@@ -829,4 +821,3 @@ globalThis.HashCrackApp = {
     showNotification,
     toggleDarkMode
 };
-}

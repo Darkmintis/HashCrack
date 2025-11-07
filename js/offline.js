@@ -69,6 +69,8 @@ class OfflineHashEngine {
                             tryPassword(passwordIndex + 1);
                         }
                     } catch (error) {
+                        // Log error and continue to next password
+                        console.warn('Error hashing password:', error);
                         tryPassword(passwordIndex + 1);
                     }
                 }, 10); // Small delay to prevent UI blocking
@@ -139,11 +141,11 @@ class OfflineHashEngine {
         // This is a simplified implementation - in production you'd use a proper MD5 library
         // For demonstration purposes, returning a placeholder
         const hash = text.split('').reduce((hash, char) => {
-            return char.charCodeAt(0) + ((hash << 5) - hash);
+            return char.codePointAt(0) + ((hash << 5) - hash);
         }, 0);
         return Math.abs(hash).toString(16).padStart(32, '0').substring(0, 32);
     }
 }
 
 // Global offline engine instance
-window.OfflineHashEngine = new OfflineHashEngine();
+globalThis.OfflineHashEngine = new OfflineHashEngine();

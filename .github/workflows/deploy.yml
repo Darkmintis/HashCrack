@@ -1,0 +1,90 @@
+name: Deploy HashCrack to darkmintis-dev
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout HashCrack repository
+        uses: actions/checkout@v4
+
+      - name: Checkout darkmintis-dev
+        uses: actions/checkout@v4
+        with:
+          repository: Darkmintis/darkmintis-dev
+          token: ${{ secrets.DEPLOY_PAT }}
+          path: main-repo
+
+      - name: Copy production files to main repo
+        run: |
+          # Remove old deployment
+          rm -rf main-repo/dist/hashcrack
+          mkdir -p main-repo/dist/hashcrack
+
+          # Copy only production files
+          cp index.html main-repo/dist/hashcrack/
+          cp config.js main-repo/dist/hashcrack/
+          cp -r css main-repo/dist/hashcrack/
+          cp -r js main-repo/dist/hashcrack/
+          cp -r wordlists main-repo/dist/hashcrack/
+          cp LICENSE main-repo/dist/hashcrack/
+          cp README.md main-repo/dist/hashcrack/
+
+          # Copy .gitignore if exists
+          [ -f .gitignore ] && cp .gitignore main-repo/dist/hashcrack/ || true
+
+          echo "✅ Production files copied successfully"
+          echo "📦 Deployed files:"
+          ls -la main-repo/dist/hashcrack/
+
+      - name: Commit and push to darkmintis-dev
+        run: |
+          cd main-repo
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # Add changes
+          git add dist/hashcrack/
+          
+          # Commit only if there are changes
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to deploy"
+          else
+            git commit -m "🔄 Update HashCrack from commit ${GITHUB_SHA:0:7}"
+            git push
+            echo "✅ Changes pushed successfully"
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "## 🎉 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tool**: HashCrack - Professional Hash Cracking Tool" >> $GITHUB_STEP_SUMMARY
+          echo "- **Live URL**: https://darkmintis.dev/hashcrack" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${GITHUB_SHA:0:7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Deployed Files" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ index.html" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ config.js" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ css/ (styles)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ js/ (hash-cracker.js, app.js, offline.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ wordlists/ (10k.txt, 100k.txt, rockyou*.txt)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ LICENSE" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ README.md" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Features Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Client-side hash cracking" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 20+ hash algorithm support" >> $GITHUB_STEP_SUMMARY
+          echo "- 📚 Multiple wordlist support" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚡ Web Worker multi-threading" >> $GITHUB_STEP_SUMMARY
+          echo "- 🎨 Modern responsive UI" >> $GITHUB_STEP_SUMMARY
+          echo "- 💾 Offline-capable" >> $GITHUB_STEP_SUMMARY
+
