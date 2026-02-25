@@ -12,8 +12,7 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-        
-    <!-- Base URL for subdirectory deployment -->
+
     <base href="/hashcrack/">
 
     <!-- Styles -->
@@ -22,14 +21,53 @@
 <body class="platform" id="app-body">
     <!-- Platform Header -->
     <header class="platform-header">
-        <div class="header-left">
-            <h1 class="platform-title"><i class="fas fa-unlock"></i> HashCrack</h1>
-            <p class="platform-subtitle">Professional Hash Cracking Tool for CTF Players</p>
+        <div class="header-container">
+            <!-- Logo and Branding -->
+            <div class="header-brand">
+                <div class="brand-logo">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <div class="brand-info">
+                    <h1 class="platform-title">
+                        HashCrack
+                    </h1>
+                    <p class="platform-subtitle">
+                        <i class="fas fa-code"></i> Professional Hash Cracking for CTF Players
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Navigation -->
+            <nav class="header-nav">
+                <button class="nav-btn" id="statsBtn" title="View Statistics">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="nav-label">Stats</span>
+                </button>
+                <button class="nav-btn" id="aboutBtn" title="About HashCrack">
+                    <i class="fas fa-info-circle"></i>
+                    <span class="nav-label">About</span>
+                </button>
+                <div class="nav-divider"></div>
+                <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </nav>
         </div>
-        <div class="header-right">
-            <button id="themeToggle" class="theme-toggle" title="Toggle Theme">
-                <i class="fas fa-moon"></i>
-            </button>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <i class="fas fa-circle status-indicator status-ready"></i>
+                <span class="status-text" id="systemStatus">System Ready</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-microchip"></i>
+                <span class="status-text" id="workerCount">4 Workers Active</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-database"></i>
+                <span class="status-text" id="wordlistStatus">3 Wordlists Loaded</span>
+            </div>
         </div>
     </header>
 
