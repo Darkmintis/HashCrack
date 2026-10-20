@@ -96,7 +96,8 @@ You can also upload custom wordlists in .txt format.
 ### Publishing wordlists to R2
 
 The bucket is `darkmintis-wordlists` and is exposed at `cdn.darkmintis.dev`.
-CORS, custom domain and cache headers are already configured.
+The custom domain and cache headers are already configured; apply the CORS file
+below if the bucket is recreated.
 
 1. Build the compressed files (output is gitignored):
 
@@ -126,6 +127,24 @@ CORS, custom domain and cache headers are already configured.
 4. `config.js` → `WORDLIST_CDN` must point at
    `https://cdn.darkmintis.dev/wordlists`. For local development, set it to
    `"wordlists"` to use the uncompressed `.txt` files in this repo.
+
+### CDN abuse protection
+
+CORS is restricted to the official origins (`darkmintis.dev`,
+`www.darkmintis.dev`, the Workers preview, and local development). Direct
+downloads still work, but other sites cannot fetch the files from browser
+JavaScript. If you self-host HashCrack, point `WORDLIST_CDN` at your own bucket
+or mirror.
+
+Cloudflare caches these objects at the edge (`cf-cache-status: HIT`) and R2
+egress is free, so normal hotlinking does not generate a bandwidth bill. To stop
+cache-busting query strings from forcing R2 reads, add a **Cache Rule** for
+`cdn.darkmintis.dev/wordlists/*` that ignores the query string in the cache key
+and uses a long edge TTL. Optionally add a **WAF rate limiting rule** on the same
+path (for example 20 requests per 10 seconds per IP).
+
+If you change the CORS policy, purge the cached wordlist URLs. `Vary: Origin`
+means the edge can keep serving old headers until its TTL expires.
 
 ## Architecture
 
