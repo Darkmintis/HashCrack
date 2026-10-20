@@ -75,48 +75,98 @@ The following hash types are also supported but may be slower in browser environ
 
 ## Wordlists
 
-The tool includes several built-in wordlists:
+Built-in lists are **not bundled** and are never downloaded automatically. The
+page shows an **Offline downloads** panel; the first click downloads a gzip file
+from the R2 CDN, stores it in IndexedDB, and reuses it on later visits
+(including offline).
 
-- `10k.txt` - Common passwords (10,000 entries)
-- `100k.txt` - Extended password list (100,000 entries)  
-- `rockyou1.txt` - RockYou dataset part 1
-- `rockyou2.txt` - RockYou dataset part 2
+| List | Raw | Gzip | Words |
+| --- | --- | --- | --- |
+| Common Passwords | 83 KB | 38 KB | 10,000 |
+| Extended Passwords | 0.9 MB | 431 KB | 99,948 |
+| RockYou | 147 MB | 52 MB | 14,344,375 |
+
+Files are served from `https://cdn.darkmintis.dev/wordlists/` (an R2 custom
+domain). The two RockYou parts are concatenated into a single
+`rockyou.txt.gz` by `scripts/prepare-wordlists.mjs`, so the browser downloads,
+decompresses and parses one stream.
 
 You can also upload custom wordlists in .txt format.
+
+### Publishing wordlists to R2
+
+The bucket is `darkmintis-wordlists` and is exposed at `cdn.darkmintis.dev`.
+CORS, custom domain and cache headers are already configured.
+
+1. Build the compressed files (output is gitignored):
+
+   ```bash
+   node scripts/prepare-wordlists.mjs
+   ```
+
+2. Upload them (do **not** set `Content-Encoding: gzip` - the browser
+   decompresses the `.gz` payload with `DecompressionStream`):
+
+   ```bash
+   npx wrangler r2 object put darkmintis-wordlists/wordlists/rockyou.txt.gz \
+     --file wordlists-gz/rockyou.txt.gz \
+     --content-type application/gzip \
+     --cache-control "public, max-age=31536000, immutable" \
+     --remote
+   ```
+
+   Repeat for `10k.txt.gz` and `100k.txt.gz`.
+
+3. CORS (only needed if the bucket is recreated):
+
+   ```bash
+   npx wrangler r2 bucket cors set darkmintis-wordlists --file scripts/r2-cors.json
+   ```
+
+4. `config.js` → `WORDLIST_CDN` must point at
+   `https://cdn.darkmintis.dev/wordlists`. For local development, set it to
+   `"wordlists"` to use the uncompressed `.txt` files in this repo.
 
 ## Architecture
 
 - **Frontend**: HTML/CSS/JavaScript
 - **Hash Library**: CryptoJS for cryptographic functions
 - **Processing**: Web Workers for multi-threaded cracking
-- **Storage**: LocalStorage for results persistence
+- **Wordlists**: gzip from R2 → `DecompressionStream` → IndexedDB cache
+- **Storage**: IndexedDB for wordlists, LocalStorage for results persistence
 
 ## File Structure
 
 ```
 HashCrack/
-├── index.html          # Main application
-├── css/style.css       # Styling
+├── index.html                   # Main application
+├── config.js                    # CDN URL + app configuration
+├── css/style.css                # Styling
 ├── js/
-│   ├── hash-cracker.js # Core cracking engine
-│   ├── app.js          # Application logic
-│   ├── offline.js      # Offline functionality
-│   ├── p2p.js          # P2P features
-│   └── websocket.js    # WebSocket support
-├── wordlists/          # Password wordlists
+│   ├── hash-cracker.js          # Core cracking engine
+│   ├── app.js                   # Application logic
+│   ├── offline.js               # Offline functionality
+│   └── wordlist-store.js        # R2 download + IndexedDB cache
+├── scripts/
+│   ├── prepare-wordlists.mjs    # Builds wordlists-gz/*.txt.gz
+│   └── r2-cors.json             # R2 CORS policy
+├── wordlists/                   # Source .txt files (not all deployed)
 │   ├── 10k.txt
 │   ├── 100k.txt
 │   ├── rockyou1.txt
 │   └── rockyou2.txt
+└── wordlists-gz/                # Generated, gitignored, uploaded to R2
 ```
 
 ## Performance
 
 - **MD5**: ~500K attempts/second (4-core CPU)
-- **SHA256**: ~150K attempts/second (4-core CPU)  
+- **SHA256**: ~150K attempts/second (4-core CPU)
 - **SHA512**: ~80K attempts/second (4-core CPU)
-- **Memory usage**: <100MB for large wordlists
-- **Load time**: <2 seconds for 500MB wordlist
+- **RockYou parse**: ~2 seconds on a modern desktop (14.3M lines)
+- **Repeat visits**: no re-download - the gzip stays in IndexedDB
+- **Memory**: scales with the selected list; RockYou needs several hundred MB
+  while cracking, so prefer 10K/100K on low-memory devices
 
 ## Adding New Hash Types
 
