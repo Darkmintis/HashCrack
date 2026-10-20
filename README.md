@@ -96,8 +96,7 @@ You can also upload custom wordlists in .txt format.
 ### Publishing wordlists to R2
 
 The bucket is `darkmintis-wordlists` and is exposed at `cdn.darkmintis.dev`.
-The custom domain and cache headers are already configured; apply the CORS file
-below if the bucket is recreated.
+The custom domain and cache headers are already configured.
 
 1. Build the compressed files (output is gitignored):
 
@@ -118,36 +117,12 @@ below if the bucket is recreated.
 
    Repeat for `10k.txt.gz` and `100k.txt.gz`.
 
-3. CORS (only needed if the bucket is recreated):
-
-   ```bash
-   npx wrangler r2 bucket cors set darkmintis-wordlists --file scripts/r2-cors.json
-   ```
-
-4. `config.js` → `WORDLIST_CDN` must point at
+3. `config.js` → `WORDLIST_CDN` must point at
    `https://cdn.darkmintis.dev/wordlists`. For local development, set it to
    `"wordlists"` to use the uncompressed `.txt` files in this repo.
 
-### CDN abuse protection
-
-CORS is restricted to the official origins (`darkmintis.dev`,
-`www.darkmintis.dev`, the Workers preview, and local development). Direct
-downloads still work, but other sites cannot fetch the files from browser
-JavaScript. If you self-host HashCrack, point `WORDLIST_CDN` at your own bucket
-or mirror.
-
-Cloudflare caches these objects at the edge (`cf-cache-status: HIT`) and R2
-egress is free, so normal hotlinking does not generate a bandwidth bill. To stop
-cache-busting from forcing R2 reads, add a **Cache Rule** for
-`cdn.darkmintis.dev/wordlists/*` with a custom cache key that ignores the query
-string and does not include the `Origin` header, plus a long edge TTL. The
-default Cloudflare cache key includes `Origin` (and R2 sends `Vary: Origin`), so
-without this an attacker can create a cache miss per request by rotating that
-header. Optionally add a **WAF rate limiting rule** on the same path (for example
-20 requests per 10 seconds per IP).
-
-If you change the CORS policy, purge the cached wordlist URLs. `Vary: Origin`
-means the edge can keep serving old headers until its TTL expires.
+The CDN URL is public and read-only. Self-hosters should point `WORDLIST_CDN` at
+their own bucket or mirror instead of reusing the official one.
 
 ## Architecture
 
