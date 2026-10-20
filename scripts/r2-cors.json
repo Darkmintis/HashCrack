@@ -2,7 +2,15 @@
   "rules": [
     {
       "allowed": {
-        "origins": ["*"],
+        "origins": [
+          "https://darkmintis.dev",
+          "https://www.darkmintis.dev",
+          "https://darkmintis.darkmintis.workers.dev",
+          "http://localhost:4321",
+          "http://127.0.0.1:4321",
+          "http://localhost:8080",
+          "http://127.0.0.1:8080"
+        ],
         "methods": ["GET", "HEAD"],
         "headers": ["*"]
       },
