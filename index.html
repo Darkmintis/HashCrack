@@ -66,7 +66,7 @@
             </div>
             <div class="status-item">
                 <i class="fas fa-database"></i>
-                <span class="status-text" id="wordlistStatus">3 Wordlists Loaded</span>
+                <span class="status-text" id="wordlistStatus">0 Wordlists Stored</span>
             </div>
         </div>
     </header>
@@ -148,6 +148,18 @@
                         <small class="wordlist-help">
                             Hold Ctrl/Cmd to select multiple wordlists
                         </small>
+
+                        <!-- On-demand downloads (nothing is fetched automatically) -->
+                        <div class="wordlist-downloads">
+                            <div class="wordlist-downloads-head">
+                                <span><i class="fas fa-hard-drive"></i> Offline downloads</span>
+                                <span class="wordlist-storage-info" id="wordlistStorageInfo"></span>
+                            </div>
+                            <div class="wordlist-download-list" id="wordlistDownloadList" aria-live="polite"></div>
+                            <small class="wordlist-help">
+                                Download once — lists stay in this browser (IndexedDB) and are reused offline. Nothing downloads until you click.
+                            </small>
+                        </div>
                     </div>
 
                     <!-- Custom Wordlist Upload -->
@@ -209,6 +221,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="js/hash-cracker.js"></script>
     <script src="js/offline.js"></script>
+    <script src="js/wordlist-store.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

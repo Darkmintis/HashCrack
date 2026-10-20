@@ -20,7 +20,8 @@ const AppState = {
     darkMode: false,
     lastProgressUpdate: 0,
     wordlistCache: new Map(),
-    cacheSize: 0
+    cacheSize: 0,
+    storedWordlists: []
 };
 
 // Utility function for logging
@@ -57,7 +58,9 @@ function updateProgressThrottled(progress, status) {
 
 // Memory-efficient wordlist cache management
 function addToCache(key, data) {
-    const dataSize = JSON.stringify(data).length;
+    // Estimate size instead of JSON.stringify()-ing millions of strings,
+    // which is extremely slow and allocates another full copy in memory.
+    const dataSize = data.length * 16;
     
     // If adding this would exceed cache size, clear old entries
     if (AppState.cacheSize + dataSize > CONFIG.MAX_CACHE_SIZE) {
@@ -105,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupFileUpload();
     setupEventListeners();
+    setupWordlistDownloads();
     loadSettings();
 });
 
@@ -369,11 +373,7 @@ function validateHashInput(hashInput, crackButton) {
 // Helper function to load selected wordlists
 async function loadSelectedWordlists(wordlistSelect) {
     let allWords = [];
-    const selectedOptions = Array.from(wordlistSelect.selectedOptions);
-    
-    if (selectedOptions.length === 0) {
-        selectedOptions.push(wordlistSelect.options[0]);
-    }
+    const selectedOptions = getSelectedWordlistOptions(wordlistSelect);
     
     for (const option of selectedOptions) {
         const wordlistName = option.value;
@@ -466,6 +466,23 @@ globalThis.startCracking = async function startCracking() {
     if (!validateHashInput(hashInput, crackButton)) {
         return;
     }
+
+    // Never download automatically: require the user to fetch the list first.
+    const selectedOptions = getSelectedWordlistOptions(wordlistSelect);
+    const missingWordlists = await findMissingWordlists(selectedOptions);
+    if (missingWordlists.length > 0) {
+        showNotification(
+            `Download ${missingWordlists.join(', ')} first — use the Download button in the Wordlists panel.`,
+            'warning'
+        );
+        const downloadPanel = document.getElementById('wordlistDownloadList');
+        if (downloadPanel) {
+            downloadPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            downloadPanel.classList.add('wordlist-attention');
+            setTimeout(() => downloadPanel.classList.remove('wordlist-attention'), 1600);
+        }
+        return;
+    }
     
     // Set active state
     AppState.isActive = true;
@@ -536,114 +553,57 @@ globalThis.startCracking = async function startCracking() {
     }
 };
 
-// Helper function to process wordlist text into array
-function processWordlistText(text) {
-    return text.split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-}
-
-// Helper function to load single RockYou file
-async function loadSingleRockyouFile() {
-    const response = await fetch(`wordlists/rockyou.txt`);
-    if (response.ok) {
-        console.log('[INFO] Found single RockYou file, using that directly');
-        const text = await response.text();
-        return processWordlistText(text);
-    }
-    return null;
-}
-
-// Helper function to load and combine RockYou parts
-async function loadCombinedRockyou() {
-    const response1 = await fetch(`wordlists/rockyou1.txt`);
-    const response2 = await fetch(`wordlists/rockyou2.txt`);
-    
-    if (response1.ok && response2.ok) {
-        console.log('[INFO] Combining RockYou Part 1 and Part 2 wordlists');
-        const text1 = await response1.text();
-        const text2 = await response2.text();
-        
-        const words1 = processWordlistText(text1);
-        const words2 = processWordlistText(text2);
-        
-        console.log(`[INFO] Loaded ${words1.length.toLocaleString()} passwords from Part 1 and ${words2.length.toLocaleString()} from Part 2`);
-        
-        const combined = [...new Set([...words1, ...words2])];
-        console.log(`[INFO] Combined RockYou wordlist has ${combined.length.toLocaleString()} unique passwords`);
-        return combined;
-    }
-    
-    // Try individual parts as fallback
-    if (response1.ok) {
-        console.log('[INFO] Only RockYou Part 1 is available, using that');
-        const text1 = await response1.text();
-        return processWordlistText(text1);
-    }
-    
-    if (response2.ok) {
-        console.log('[INFO] Only RockYou Part 2 is available, using that');
-        const text2 = await response2.text();
-        return processWordlistText(text2);
-    }
-    
-    console.warn('[WARNING] Failed to load any RockYou wordlist parts');
-    return [];
-}
-
-// Helper function to load RockYou wordlist
-async function loadRockyouWordlist(name) {
-    console.log('[INFO] Loading RockYou wordlist (combined from Part 1 and Part 2)');
-    
-    // Try single file first
-    const singleFile = await loadSingleRockyouFile();
-    if (singleFile) {
-        addToCache(name, singleFile);
-        return singleFile;
-    }
-    
-    // Try combined parts
-    const combined = await loadCombinedRockyou();
-    if (combined.length > 0) {
-        addToCache(name, combined);
-    }
-    return combined;
-}
-
-// Load built-in wordlists with caching
+// Load a built-in wordlist from the on-demand offline store.
+// This NEVER performs a network request: the user must click Download first.
 async function loadBuiltInWordlist(name) {
     try {
-        // Check cache first
         const cached = getFromCache(name);
         if (cached) {
             console.log(`[CACHE] Using cached wordlist: ${name}`);
             return cached;
         }
-        
-        console.log(`[INFO] Loading wordlist: ${name}`);
-        
-        // Handle combined rockyou case
-        if (name === 'rockyou') {
-            return await loadRockyouWordlist(name);
-        }
-        
-        // Regular wordlist loading
-        const response = await fetch(`wordlists/${name}.txt`);
-        if (response.ok) {
-            const text = await response.text();
-            const words = text.split(/\r?\n/).filter(word => word.trim());
-            
-            console.log(`[INFO] Loaded ${words.length.toLocaleString()} passwords from ${name}`);
-            addToCache(name, words);
-            return words;
-        } else {
-            console.warn(`[WARNING] Could not load wordlist ${name}.txt (HTTP Status: ${response.status})`);
+
+        if (!globalThis.wordlistStore) {
+            console.warn('[WARNING] Wordlist store is unavailable');
             return [];
         }
+
+        const words = await globalThis.wordlistStore.getWords(name);
+        if (!words) {
+            console.warn(`[WARNING] Wordlist "${name}" has not been downloaded yet`);
+            return [];
+        }
+
+        console.log(`[INFO] Loaded ${words.length.toLocaleString()} passwords from browser storage (${name})`);
+        addToCache(name, words);
+        return words;
     } catch (error) {
-        console.warn(`[WARNING] Error loading wordlist ${name}: ${error.message}`);
+        console.warn(`[WARNING] Error reading wordlist ${name}: ${error.message}`);
         return [];
     }
+}
+
+// Selected wordlists (falls back to the first option when nothing is selected)
+function getSelectedWordlistOptions(wordlistSelect) {
+    const selected = Array.from(wordlistSelect.selectedOptions);
+    if (selected.length === 0 && wordlistSelect.options.length > 0) {
+        selected.push(wordlistSelect.options[0]);
+    }
+    return selected;
+}
+
+// Return the display names of selected built-in lists that are not downloaded
+async function findMissingWordlists(options) {
+    if (!globalThis.wordlistStore) return [];
+    const missing = [];
+    for (const option of options) {
+        const id = option.value;
+        if (id.startsWith('custom_')) continue;
+        if (!(await globalThis.wordlistStore.has(id))) {
+            missing.push(option.textContent.trim());
+        }
+    }
+    return missing;
 }
 
 // Load stored results from localStorage
@@ -917,6 +877,149 @@ function setupEventListeners() {
     updateStatusBar();
 }
 
+// ---------------------------------------------------------------------------
+// Wordlist download manager (on-demand downloads + IndexedDB cache)
+// ---------------------------------------------------------------------------
+
+function wordlistRowHtml(list, ready) {
+    const metaText = ready
+        ? 'Saved in this browser · ready offline'
+        : `${list.downloadLabel} download · ${list.wordsLabel} words`;
+
+    return `
+        <div class="wordlist-item${ready ? ' is-ready' : ''}" data-id="${list.id}">
+            <div class="wordlist-item-top">
+                <div>
+                    <div class="wordlist-item-name">
+                        ${list.name}
+                        <span class="wordlist-item-badge">${ready ? 'Ready' : list.wordsLabel}</span>
+                    </div>
+                    <div class="wordlist-item-meta" data-role="meta">${metaText}</div>
+                </div>
+                <div class="wordlist-item-actions">
+                    <button type="button" class="wordlist-btn is-primary" data-action="download" data-id="${list.id}">
+                        <i class="fas fa-download"></i> <span>Download</span>
+                    </button>
+                    <button type="button" class="wordlist-btn" data-action="remove" data-id="${list.id}" title="Remove from this browser">
+                        <i class="fas fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="wordlist-progress"><div class="wordlist-progress-bar" data-role="progress"></div></div>
+        </div>`;
+}
+
+async function refreshWordlistManager() {
+    const container = document.getElementById('wordlistDownloadList');
+    if (!container || !globalThis.wordlistStore) return;
+
+    let downloaded = [];
+    try {
+        downloaded = await globalThis.wordlistStore.list();
+    } catch (error) {
+        console.warn('[WARNING] Could not read downloaded wordlists:', error.message);
+    }
+
+    AppState.storedWordlists = downloaded;
+    const readyIds = new Set(downloaded.map(item => item.id));
+    container.innerHTML = globalThis.wordlistStore.LISTS
+        .map(list => wordlistRowHtml(list, readyIds.has(list.id)))
+        .join('');
+
+    updateWordlistStorageInfo(downloaded);
+    updateStatusBar();
+}
+
+function updateWordlistStorageInfo(downloaded) {
+    const element = document.getElementById('wordlistStorageInfo');
+    if (!element) return;
+    if (!downloaded.length) {
+        element.textContent = 'No lists saved';
+        return;
+    }
+    const totalBytes = downloaded.reduce((sum, item) => sum + (item.bytes || 0), 0);
+    element.textContent = `${downloaded.length} saved · ${globalThis.wordlistStore.formatBytes(totalBytes)}`;
+}
+
+function setupWordlistDownloads() {
+    const container = document.getElementById('wordlistDownloadList');
+    if (!container || !globalThis.wordlistStore) return;
+
+    container.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const { action, id } = button.dataset;
+        if (action === 'download') {
+            await handleWordlistDownload(id);
+        } else if (action === 'remove') {
+            await handleWordlistRemove(id);
+        }
+    });
+
+    refreshWordlistManager();
+}
+
+async function handleWordlistDownload(id) {
+    const row = document.querySelector(`.wordlist-item[data-id="${id}"]`);
+    if (!row) return;
+
+    const list = globalThis.wordlistStore.LISTS.find(item => item.id === id);
+    const button = row.querySelector('[data-action="download"]');
+    const label = button ? button.querySelector('span') : null;
+    const meta = row.querySelector('[data-role="meta"]');
+    const progress = row.querySelector('[data-role="progress"]');
+
+    row.classList.add('is-downloading');
+    if (button) button.disabled = true;
+    if (label) label.textContent = 'Starting…';
+    if (meta) meta.textContent = 'Connecting…';
+
+    try {
+        await globalThis.wordlistStore.download(id, ({ loaded, total }) => {
+            const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+            if (label) {
+                label.textContent = percent === null
+                    ? globalThis.wordlistStore.formatBytes(loaded)
+                    : `${percent}%`;
+            }
+            if (progress) progress.style.width = percent === null ? '100%' : `${percent}%`;
+            if (meta && total > 0) {
+                meta.textContent = `${globalThis.wordlistStore.formatBytes(loaded)} of ${globalThis.wordlistStore.formatBytes(total)}`;
+            }
+        });
+
+        showNotification(`${list ? list.name : id} saved to this browser`, 'success');
+        await refreshWordlistManager();
+    } catch (error) {
+        console.error('[ERROR] Wordlist download failed:', error);
+        row.classList.remove('is-downloading');
+        if (progress) progress.style.width = '0%';
+        if (button) button.disabled = false;
+        if (label) label.textContent = 'Retry';
+        if (meta) meta.textContent = error.message;
+        showNotification(`Download failed: ${error.message}`, 'error');
+    }
+}
+
+async function handleWordlistRemove(id) {
+    const list = globalThis.wordlistStore.LISTS.find(item => item.id === id);
+    const name = list ? list.name : id;
+
+    if (!globalThis.confirm(`Remove ${name} from this browser? You can download it again later.`)) {
+        return;
+    }
+
+    try {
+        await globalThis.wordlistStore.remove(id);
+        showNotification(`${name} removed from this browser`, 'info');
+        await refreshWordlistManager();
+    } catch (error) {
+        console.error('[ERROR] Could not remove wordlist:', error);
+        showNotification(`Could not remove wordlist: ${error.message}`, 'error');
+    }
+}
+
 // Toggle dark mode
 function toggleDarkMode() {
     AppState.darkMode = !AppState.darkMode;
@@ -999,9 +1102,9 @@ function updateStatusBar() {
     const wordlistStatus = document.getElementById('wordlistStatus');
     if (wordlistStatus) {
         const select = document.getElementById('wordlistSelect');
-        const selectedCount = select ? select.selectedOptions.length : 0;
-        const pluralSuffix = selectedCount === 1 ? '' : 's';
-        wordlistStatus.textContent = `${selectedCount} Wordlist${pluralSuffix} Selected`;
+        const selectedCount = select ? getSelectedWordlistOptions(select).length : 0;
+        const storedCount = AppState.storedWordlists ? AppState.storedWordlists.length : 0;
+        wordlistStatus.textContent = `${storedCount} stored · ${selectedCount} selected`;
     }
     
     // Update system status based on readiness

@@ -510,6 +510,209 @@ h6 { font-size: 1rem; }
     color: var(--gray-600);
 }
 
+/* On-demand wordlist downloads */
+.wordlist-downloads {
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px dashed var(--gray-200);
+}
+
+.wordlist-downloads-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.wordlist-downloads-head i {
+    color: var(--primary-500);
+    margin-right: 0.25rem;
+}
+
+.wordlist-storage-info {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: var(--gray-500);
+    text-align: right;
+}
+
+.wordlist-download-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+@keyframes wordlist-attention-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+    50% { box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.22); }
+}
+
+.wordlist-attention {
+    border-radius: var(--radius-md);
+    animation: wordlist-attention-pulse 0.8s ease-in-out 2;
+}
+
+.wordlist-item {
+    padding: var(--space-sm);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background-color: var(--gray-50);
+    transition: border-color var(--transition-fast), background-color var(--transition-base);
+}
+
+.wordlist-item.is-ready {
+    border-color: rgba(16, 185, 129, 0.45);
+    background-color: rgba(16, 185, 129, 0.07);
+}
+
+.wordlist-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.wordlist-item-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.wordlist-item-badge {
+    padding: 0.08rem 0.38rem;
+    border-radius: var(--radius-full);
+    background-color: var(--primary-100);
+    color: var(--primary-700);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.wordlist-item.is-ready .wordlist-item-badge {
+    background-color: rgba(16, 185, 129, 0.16);
+    color: var(--success-500);
+}
+
+.wordlist-item-meta {
+    margin-top: 0.15rem;
+    font-size: 0.68rem;
+    color: var(--gray-500);
+}
+
+.wordlist-item-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.35rem;
+}
+
+.wordlist-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.32rem 0.55rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background-color: white;
+    color: var(--gray-700);
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.wordlist-btn:hover:not(:disabled) {
+    border-color: var(--primary-500);
+    color: var(--primary-600);
+}
+
+.wordlist-btn:disabled {
+    opacity: 0.75;
+    cursor: progress;
+}
+
+.wordlist-btn.is-primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+    color: white;
+}
+
+.wordlist-btn.is-primary:hover:not(:disabled) {
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.wordlist-btn[data-action="remove"] {
+    display: none;
+    color: var(--gray-500);
+}
+
+.wordlist-item.is-ready .wordlist-btn[data-action="remove"] {
+    display: inline-flex;
+}
+
+.wordlist-item.is-ready .wordlist-btn[data-action="download"] {
+    display: none;
+}
+
+.wordlist-progress {
+    display: none;
+    height: 4px;
+    margin-top: var(--space-sm);
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background-color: var(--gray-200);
+}
+
+.wordlist-item.is-downloading .wordlist-progress {
+    display: block;
+}
+
+.wordlist-progress-bar {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+    transition: width 0.2s ease;
+}
+
+.dark-mode .wordlist-item {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark-mode .wordlist-btn {
+    background-color: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.dark-mode .wordlist-btn.is-primary {
+    color: white;
+}
+
+@media (max-width: 480px) {
+    .wordlist-item-top {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .wordlist-item-actions {
+        width: 100%;
+    }
+
+    .wordlist-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
 .file-upload-area {
     border: 2px dashed var(--gray-300);
     border-radius: var(--radius-md);
