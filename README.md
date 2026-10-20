@@ -95,7 +95,7 @@ You can also upload custom wordlists in .txt format.
 
 ### Publishing wordlists to R2
 
-The bucket is `darkmintis-wordlists` and is exposed at `cdn.darkmintis.dev`.
+The bucket is `wordlist` and is exposed at `cdn.darkmintis.dev`.
 The custom domain and cache headers are already configured.
 
 1. Build the compressed files (output is gitignored):
@@ -108,7 +108,7 @@ The custom domain and cache headers are already configured.
    decompresses the `.gz` payload with `DecompressionStream`):
 
    ```bash
-   npx wrangler r2 object put darkmintis-wordlists/wordlists/rockyou.txt.gz \
+   npx wrangler r2 object put wordlist/wordlists/rockyou.txt.gz \
      --file wordlists-gz/rockyou.txt.gz \
      --content-type application/gzip \
      --cache-control "public, max-age=31536000, immutable" \
