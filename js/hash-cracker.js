@@ -857,54 +857,12 @@ class HashCracker {
         ];
         
         this.wordlists.set('common', commonPasswords);
-        
-        // Load from files if available
-        try {
-            // Load available wordlists
-            await this.loadWordlistFromURL('10k');
-            await this.loadWordlistFromURL('100k');
-            
-            // Load rockyou parts and combine them
-            const rockyou1Loaded = await this.loadWordlistFromURL('rockyou1');
-            const rockyou2Loaded = await this.loadWordlistFromURL('rockyou2');
-            
-            // Combine rockyou parts if both loaded successfully
-            if (rockyou1Loaded && rockyou2Loaded) {
-                const rockyou1Words = this.wordlists.get('rockyou1') || [];
-                const rockyou2Words = this.wordlists.get('rockyou2') || [];
-                
-                // Combine and deduplicate
-                const combinedRockyou = [...new Set([...rockyou1Words, ...rockyou2Words])];
-                this.wordlists.set('rockyou', combinedRockyou);
-                // Silent operation to reduce console noise
-                // console.log(`Created combined rockyou wordlist with ${combinedRockyou.length} unique words`);
-            }
-        } catch (e) {
-            // Log warning about using built-in wordlists only
-            this.log('warn', 'Using built-in wordlists only:', e.message);
-        }
-    }
 
-    async loadWordlistFromURL(name) {
-        try {
-            const response = await fetch(`wordlists/${name}.txt`);
-            if (response.ok) {
-                const content = await response.text();
-                const words = content.split('\n')
-                    .map(word => word.trim())
-                    .filter(word => word.length > 0);
-                
-                this.wordlists.set(name, words);
-                // Silent loading to reduce noise
-                // this.log('info', `Loaded ${words.length} words from ${name}.txt`);
-                return true;
-            } else {
-                this.log('warn', `Could not load ${name}.txt (Status: ${response.status})`);
-            }
-        } catch (e) {
-            this.log('error', `Error loading ${name}.txt:`, e.message);
-        }
-        return false;
+        // Built-in wordlists are intentionally NOT fetched here.
+        // HashCrack downloads them only when the user clicks "Download" in
+        // the Wordlists panel (see js/wordlist-store.js), then passes the
+        // parsed array to crackHash(). This avoids downloading hundreds of
+        // megabytes on every page load.
     }
 
     detectHashType(hash) {
