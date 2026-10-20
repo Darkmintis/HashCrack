@@ -138,10 +138,13 @@ or mirror.
 
 Cloudflare caches these objects at the edge (`cf-cache-status: HIT`) and R2
 egress is free, so normal hotlinking does not generate a bandwidth bill. To stop
-cache-busting query strings from forcing R2 reads, add a **Cache Rule** for
-`cdn.darkmintis.dev/wordlists/*` that ignores the query string in the cache key
-and uses a long edge TTL. Optionally add a **WAF rate limiting rule** on the same
-path (for example 20 requests per 10 seconds per IP).
+cache-busting from forcing R2 reads, add a **Cache Rule** for
+`cdn.darkmintis.dev/wordlists/*` with a custom cache key that ignores the query
+string and does not include the `Origin` header, plus a long edge TTL. The
+default Cloudflare cache key includes `Origin` (and R2 sends `Vary: Origin`), so
+without this an attacker can create a cache miss per request by rotating that
+header. Optionally add a **WAF rate limiting rule** on the same path (for example
+20 requests per 10 seconds per IP).
 
 If you change the CORS policy, purge the cached wordlist URLs. `Vary: Origin`
 means the edge can keep serving old headers until its TTL expires.
