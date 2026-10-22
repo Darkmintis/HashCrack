@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build gzip-compressed wordlists for the R2 CDN.
+ * Build gzip-compressed wordlists for a static CDN.
  *
  * Output: wordlists-gz/<id>.txt.gz
  *
@@ -10,7 +10,7 @@
  * browser only downloads, decompresses and parses one stream. (The split has
  * only a handful of duplicate lines; runtime duplicate removal is unnecessary.)
  *
- * Then upload the files with Wrangler (see README) or any S3-compatible tool.
+ * Then upload the files to your own static CDN or S3-compatible storage.
  */
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
@@ -83,7 +83,7 @@ async function main() {
 
     await writeFile(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     console.log(`\nDone. Files are in ${outputDir}`);
-    console.log('Upload them to R2 with Wrangler (see README) or your S3 client.');
+    console.log('Upload them to your static CDN or S3-compatible storage.');
 }
 
 main().catch((error) => {

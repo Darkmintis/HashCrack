@@ -1,3 +1,18 @@
 node_modules/
 wordlists-gz/
 .wrangler/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.p12
+*.pfx
+
+# Logs and editor/OS files
+*.log
+.DS_Store
+Thumbs.db

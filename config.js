@@ -18,9 +18,10 @@ globalThis.HASHCRACK_CONFIG = {
     },
 
     // Built-in wordlist downloads.
-    // Files are served from the Cloudflare R2 custom domain, gzip-compressed.
-    // For local development set this to "wordlists" to use the uncompressed
-    // .txt files that ship with the repository.
+    // Files are served from a static CDN as gzip-compressed .txt.gz files.
+    // For local 10K/100K testing, set this to "wordlists" to use the
+    // uncompressed source files. RockYou needs the generated gzip file or
+    // the public CDN.
     WORDLIST_CDN: "https://cdn.darkmintis.dev/wordlists",
 
     // Wordlists available

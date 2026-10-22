@@ -5,11 +5,11 @@
  * automatically. The user clicks "Download" once; the compressed file is
  * stored in IndexedDB and reused on every later visit (including offline).
  *
- * Remote files live on the R2 custom domain, e.g.
+ * Remote files live on a static CDN, e.g.
  *   https://cdn.darkmintis.dev/wordlists/rockyou.txt.gz
  *
  * Set HASHCRACK_CONFIG.WORDLIST_CDN to override the base URL (use
- * "wordlists" for local development with the uncompressed .txt files).
+ * "wordlists" for local development with the uncompressed 10K/100K files).
  */
 (function () {
     'use strict';

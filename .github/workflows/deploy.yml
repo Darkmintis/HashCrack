@@ -14,6 +14,20 @@ jobs:
       - name: Checkout HashCrack repository
         uses: actions/checkout@v4
 
+      - name: Reject tracked secrets
+        run: |
+          set -euo pipefail
+
+          if git ls-files | grep -E '(^|/)(\.env(\.|$)|\.dev\.vars(\.|$)|[^/]+\.(pem|p12|pfx|key)$|id_rsa|id_ed25519)$'; then
+            echo "::error::A sensitive file is tracked in this repository."
+            exit 1
+          fi
+
+          if git grep -l -I -E '(BEGIN (RSA |OPENSSH |EC |PGP )?PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{10,})' -- . ':!wordlists/*'; then
+            echo "::error::A potential secret was found in a tracked file."
+            exit 1
+          fi
+
       - name: Checkout darkmintis-dev
         uses: actions/checkout@v4
         with:
@@ -32,13 +46,10 @@ jobs:
           cp config.js main-repo/dist/hashcrack/
           cp -r css main-repo/dist/hashcrack/
           cp -r js main-repo/dist/hashcrack/
-          # Wordlists are downloaded on demand from Cloudflare R2
-          # (cdn.darkmintis.dev) and are deliberately NOT copied into the hub.
+          # Wordlists are downloaded on demand from a static CDN and are
+          # deliberately NOT copied into the hub.
           cp LICENSE main-repo/dist/hashcrack/
           cp README.md main-repo/dist/hashcrack/
-
-          # Copy .gitignore if exists
-          [ -f .gitignore ] && cp .gitignore main-repo/dist/hashcrack/ || true
 
           echo "✅ Production files copied successfully"
           echo "📦 Deployed files:"
@@ -77,7 +88,7 @@ jobs:
           echo "- ✅ config.js" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ css/ (styles)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ js/ (hash-cracker.js, app.js, offline.js, wordlist-store.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- ☁️ wordlists from R2 (cdn.darkmintis.dev) - not bundled" >> $GITHUB_STEP_SUMMARY
+          echo "- ☁️ wordlists from the configured static CDN - not bundled" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ LICENSE" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ README.md" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

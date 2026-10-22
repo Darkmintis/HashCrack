@@ -1,283 +1,166 @@
 # HashCrack
 
-Professional client-side hash cracking tool for CTF players and security professionals. Designed as a web-based alternative to tools like John the Ripper and Hashcat for quick hash cracking during CTF competitions.
+Client-side hash cracking for CTF players and security researchers. HashCrack
+runs entirely in the browser and is a quick alternative to John the Ripper or
+Hashcat for dictionary attacks during a CTF.
 
 ## Features
 
-- **100% Client-side**: All processing happens in your browser - no server needed
-- **CTF Ready**: Optimized for speed and efficiency during CTF competitions
-- **Multi-threaded**: Uses Web Workers for parallel processing across CPU cores
-- **Comprehensive hash support**: 20+ hash types including memory-hard functions and archive formats
-- **Built-in wordlists**: 10K, 100K, and RockYou wordlists included
-- **Custom wordlist support**: Upload your own wordlists (.txt files)
-- **Real-time progress**: Live status updates and attempt counters
-- **Results history**: Track previously cracked hashes
-- **Automatic hash detection**: Identifies hash types based on patterns
-- **Advanced algorithms**: Support for Argon2, scrypt, yescrypt, and other modern hash types
-- **Archive formats**: Support for KeePass, RAR5, 7z, and PDF password hashes
+- **100% client-side**: hashes and candidate passwords never leave the browser
+- **Web Worker cracking**: uses all available CPU cores
+- **20+ hash types**: MD5, SHA1, SHA256, SHA512, bcrypt, Argon2, archive hashes,
+  and more
+- **On-demand wordlists**: 10K, 100K, and RockYou are downloaded only when you
+  click Download, then cached in IndexedDB for offline reuse
+- **Custom wordlists**: upload your own `.txt` file
+- **Automatic hash detection**
+- **Local result history** and real-time progress
 
-## Supported Hash Types
+## Supported hash types
 
 HashCrack can detect and crack the following hash types:
 
 | Hash Type | Description | Example/Format |
 |-----------|-------------|----------------|
-| MD5 | 32 characters, hexadecimal | `5f4dcc3b5aa765d61d8327deb882cf99` |
-| SHA1 | 40 characters, hexadecimal | `5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8` |
-| SHA224 | 56 characters, hexadecimal | `d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f` |
-| SHA256 | 64 characters, hexadecimal | `5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8` |
-| SHA384 | 96 characters, hexadecimal | `a8b64babd0aca91a59bdbb7761b421d4f2bb38280d3a75ba0f21f2bebc45583d446c598660c94ce680c47d19c30783a7` |
-| SHA512 | 128 characters, hexadecimal | `b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86` |
+| MD5 | 32 hexadecimal characters | `5f4dcc3b5aa765d61d8327deb882cf99` |
+| SHA1 | 40 hexadecimal characters | `5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8` |
+| SHA224 | 56 hexadecimal characters | `d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f` |
+| SHA256 | 64 hexadecimal characters | `5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8` |
+| SHA384 | 96 hexadecimal characters | `a8b64babd0aca91a59bdbb7761b421d4f2bb38280d3a75ba0f21f2bebc45583d446c598660c94ce680c47d19c30783a7` |
+| SHA512 | 128 hexadecimal characters | `b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86` |
 | MD5 Crypt | Starts with `$1$` | `$1$salt$hash` |
 | bcrypt | Starts with `$2a$` or `$2b$` | `$2a$10$salt_and_hash` |
 | SHA-256 Crypt | Starts with `$5$` | `$5$salt$hash` |
 | SHA-512 Crypt | Starts with `$6$` | `$6$salt$hash` |
-| NTLM | 32 characters | `8846F7EAEE8FB117AD06BDD830B7586C` |
-| MySQL-SHA1 | Format: `*<40 HEX CHARS>` | `*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19` |
-| PBKDF2 | Format varies with implementation | `$pbkdf2$iterations$salt$hash` |
+| NTLM | 32 hexadecimal characters | `8846F7EAEE8FB117AD06BDD830B7586C` |
+| MySQL-SHA1 | `*` followed by 40 hex characters | `*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19` |
+| PBKDF2 | Implementation-dependent | `$pbkdf2$iterations$salt$hash` |
 | yescrypt | Modern password hashing | `$y$params$salt$hash` |
-| Argon2 | Winner of PHC competition | `$argon2id$v=19$m=65536,t=3,p=4$salt$hash` |
-| scrypt | Memory-hard hashing function | `$scrypt$params$salt$hash` |
+| Argon2 | PHC winner | `$argon2id$v=19$m=65536,t=3,p=4$salt$hash` |
+| scrypt | Memory-hard hashing | `$scrypt$params$salt$hash` |
 | NetNTLMv2 | Windows authentication | `hash:challenge` |
-| WPA-PMKID | WiFi password hashing | `pmkid*mac1*mac2` |
+| WPA-PMKID | Wi-Fi password hashing | `pmkid*mac1*mac2` |
 
-### Computationally Intensive Hash Types
+### Computationally intensive formats
 
-The following hash types are also supported but may be slower in browser environments:
+These are supported but may be slow in a browser:
 
-| Hash Type | Description | Format Example |
-|-----------|-------------|----------------|
+| Hash Type | Description | Format |
+|-----------|-------------|--------|
 | KeePass KDBX | Password manager format | `kdbx:<version>:<iterations>:<salt_base64>:<header_hash>` |
 | 7z | Archive format | `7z:<salt_hex>:<iterations>:<chash>` |
 | RAR5 | Archive format | `rar5:<iterations>:<salt_hex>:<checkval_hex>` |
 | PDF | Document encryption | `pdf:<version>:<algorithm>:<iterations>:<salt_hex>:<u_hex>:<o_hex>` |
 
-> **Note**: For the memory-hard functions (Argon2, scrypt, yescrypt) and algorithms requiring specific libraries (bcrypt), we use high-iteration PBKDF2 as a fallback in browser environments where external modules may not be fully supported. This approach provides compatibility while maintaining reasonable security approximation.
+> Memory-hard algorithms use a high-iteration PBKDF2 fallback when the browser
+> does not provide a suitable native implementation.
 
-## Quick Start
+## Quick start
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Darkmintis/HashCrack.git
-   cd HashCrack
-   ```
+```bash
+git clone https://github.com/Darkmintis/HashCrack.git
+cd HashCrack
+python3 -m http.server 8080
+# Windows: py -m http.server 8080
+```
 
-2. Open `index.html` in your browser or serve with a web server
+Open <http://localhost:8080>. Any static file server works, but use port 8080:
+the default CDN's CORS policy allows `localhost:8080` and `127.0.0.1:8080`.
+Do not open `index.html` through `file://` because the wordlist downloads use
+`fetch`.
 
-3. Enter a hash, select wordlists, and start cracking
-
-## Usage
-
-1. **Enter Hash**: Paste the hash you want to crack
-2. **Select Wordlists**: Choose from built-in wordlists or upload custom ones
-3. **Start Cracking**: Click the crack button and monitor progress
-4. **View Results**: Successful cracks are displayed with statistics
+For local development, `config.js` can point `WORDLIST_CDN` at `"wordlists"` to
+use the uncompressed 10K/100K files in this repository. RockYou requires the
+generated gzip file or the public CDN.
 
 ## Wordlists
 
-Built-in lists are **not bundled** and are never downloaded automatically. The
-page shows an **Offline downloads** panel; the first click downloads a gzip file
-from the R2 CDN, stores it in IndexedDB, and reuses it on later visits
-(including offline).
+The page does **not** fetch a wordlist on load. The Offline downloads panel shows
+a Download button for each list. Clicking it downloads a gzip file from the
+configured CDN, stores it in IndexedDB, and reuses it on later visits, including
+offline.
 
-| List | Raw | Gzip | Words |
-| --- | --- | --- | --- |
-| Common Passwords | 83 KB | 38 KB | 10,000 |
-| Extended Passwords | 0.9 MB | 431 KB | 99,948 |
-| RockYou | 147 MB | 52 MB | 14,344,375 |
+`config.js` controls the CDN base URL:
 
-Files are served from `https://cdn.darkmintis.dev/wordlists/` (an R2 custom
-domain). The two RockYou parts are concatenated into a single
-`rockyou.txt.gz` by `scripts/prepare-wordlists.mjs`, so the browser downloads,
-decompresses and parses one stream.
+```js
+WORDLIST_CDN: "https://cdn.darkmintis.dev/wordlists"
+```
 
-You can also upload custom wordlists in .txt format.
+The default is a public read-only mirror. Self-hosters should set
+`WORDLIST_CDN` to their own static host and upload these files:
 
-### Publishing wordlists to R2
+```text
+10k.txt.gz
+100k.txt.gz
+rockyou.txt.gz
+```
 
-The bucket is `wordlist` and is exposed at `cdn.darkmintis.dev`.
-The custom domain and cache headers are already configured.
+Generate the gzip files from the wordlists in this repository:
 
-1. Build the compressed files (output is gitignored):
+```bash
+node scripts/prepare-wordlists.mjs
+```
 
-   ```bash
-   node scripts/prepare-wordlists.mjs
-   ```
+The script writes `wordlists-gz/*.txt.gz` and concatenates the two RockYou parts
+into one stream. Serve the `.gz` files with `Content-Type: application/gzip`;
+do **not** add `Content-Encoding: gzip`, because the browser decompresses the
+payload with `DecompressionStream`.
 
-2. Upload them (do **not** set `Content-Encoding: gzip` - the browser
-   decompresses the `.gz` payload with `DecompressionStream`):
-
-   ```bash
-   npx wrangler r2 object put wordlist/wordlists/rockyou.txt.gz \
-     --file wordlists-gz/rockyou.txt.gz \
-     --content-type application/gzip \
-     --cache-control "public, max-age=31536000, immutable" \
-     --remote
-   ```
-
-   Repeat for `10k.txt.gz` and `100k.txt.gz`.
-
-3. `config.js` → `WORDLIST_CDN` must point at
-   `https://cdn.darkmintis.dev/wordlists`. For local development, set it to
-   `"wordlists"` to use the uncompressed `.txt` files in this repo.
-
-The CDN URL is public and read-only. Self-hosters should point `WORDLIST_CDN` at
-their own bucket or mirror instead of reusing the official one.
+Custom `.txt` wordlists can be uploaded directly in the UI.
 
 ## Architecture
 
-- **Frontend**: HTML/CSS/JavaScript
-- **Hash Library**: CryptoJS for cryptographic functions
-- **Processing**: Web Workers for multi-threaded cracking
-- **Wordlists**: gzip from R2 → `DecompressionStream` → IndexedDB cache
-- **Storage**: IndexedDB for wordlists, LocalStorage for results persistence
+- **Frontend**: HTML, CSS, and vanilla JavaScript
+- **Hashing**: CryptoJS loaded from a pinned CDN version
+- **Parallelism**: Web Workers
+- **Wordlists**: gzip from a static CDN, parsed in the browser, cached in
+  IndexedDB
+- **Results**: localStorage
 
-## File Structure
+## File structure
 
-```
+```text
 HashCrack/
-├── index.html                   # Main application
-├── config.js                    # CDN URL + app configuration
-├── css/style.css                # Styling
-├── js/
-│   ├── hash-cracker.js          # Core cracking engine
-│   ├── app.js                   # Application logic
-│   ├── offline.js               # Offline functionality
-│   └── wordlist-store.js        # R2 download + IndexedDB cache
-├── scripts/
-│   ├── prepare-wordlists.mjs    # Builds wordlists-gz/*.txt.gz
-│   └── r2-cors.json             # R2 CORS policy
-├── wordlists/                   # Source .txt files (not all deployed)
-│   ├── 10k.txt
-│   ├── 100k.txt
-│   ├── rockyou1.txt
-│   └── rockyou2.txt
-└── wordlists-gz/                # Generated, gitignored, uploaded to R2
+  index.html
+  config.js
+  css/style.css
+  js/
+    hash-cracker.js
+    app.js
+    offline.js
+    wordlist-store.js
+  scripts/prepare-wordlists.mjs
+  wordlists/            # source .txt files (not all deployed)
+  wordlists-gz/         # generated gzip files (gitignored)
 ```
 
 ## Performance
 
-- **MD5**: ~500K attempts/second (4-core CPU)
-- **SHA256**: ~150K attempts/second (4-core CPU)
-- **SHA512**: ~80K attempts/second (4-core CPU)
-- **RockYou parse**: ~2 seconds on a modern desktop (14.3M lines)
-- **Repeat visits**: no re-download - the gzip stays in IndexedDB
-- **Memory**: scales with the selected list; RockYou needs several hundred MB
-  while cracking, so prefer 10K/100K on low-memory devices
+- **MD5**: roughly 500K attempts/second on a 4-core desktop
+- **SHA256**: roughly 150K attempts/second on a 4-core desktop
+- **SHA512**: roughly 80K attempts/second on a 4-core desktop
+- **RockYou parse**: about 2 seconds on a modern desktop (14.3M lines)
+- **Repeat visits**: no re-download; the gzip stays in IndexedDB
+- **Memory**: scales with the selected list. RockYou needs several hundred MB
+  while cracking, so prefer 10K/100K on low-memory devices.
 
-## Adding New Hash Types
+## Adding hash types
 
-To add support for additional hash algorithms:
-
-1. Update `detectHashType()` in `js/hash-cracker.js`
-2. Add the hash function to the `hashFunctions` object
-3. Test with known hash samples
+1. Update `detectHashType()` in `js/hash-cracker.js`.
+2. Add the hash function to the `hashFunctions` object.
+3. Test with known hash samples.
 
 ## Contributing
 
-Contributions are welcome for:
-
-- Additional hash algorithm support
-- Performance optimizations
-- New wordlists
-- Bug fixes and improvements
+Contributions are welcome for new hash algorithms, performance improvements,
+wordlists, and bug fixes.
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT License. See [LICENSE](LICENSE).
 
-## Security Notice
+## Security notice
 
-This tool is intended for legitimate security testing, CTF competitions, and educational purposes. Users are responsible for ensuring they have proper authorization before testing any systems.
-```
-
-## 🎮 **How to Use**
-
-### **Basic Hash Cracking**:
-1. Enter your hash in the input field
-2. The platform automatically detects the hash type
-3. Select one or more built-in wordlists
-4. Click "Start Cracking"
-5. Watch real-time progress and results!
-
-### **Custom Wordlists**:
-1. Drag & drop a .txt file onto the upload area
-2. Or click to browse and select your wordlist
-3. The platform loads and indexes your words
-4. Use alongside built-in wordlists for maximum coverage
-
-### **Advanced Features**:
-- **Keyboard shortcuts**: Press Enter in hash field to start
-- **Multi-wordlist**: Hold Ctrl/Cmd to select multiple lists
-- **Results history**: All successful cracks are saved locally
-- **Performance stats**: Monitor speed and efficiency
-
-## 🔬 **Technical Excellence**
-
-### **Architecture**:
-- **Zero dependencies** (except CryptoJS CDN)
-- **Pure client-side** - no backend required
-- **Web Worker threads** for parallel processing
-- **LocalStorage** for results persistence
-
-### **Performance**:
-- **Multi-core utilization** via Web Workers
-- **Optimized hash algorithms** using CryptoJS
-- **Smart memory management** for large wordlists
-- **Real-time progress tracking**
-
-### **Security**:
-- **Client-side only** - no data sent to servers
-- **No tracking or analytics**
-- **Your data stays on your device**
-- **Open source and auditable**
-
-## 🔧 **For Developers**
-
-### **Adding New Hash Types**:
-1. Update `detectHashType()` in `hash-cracker.js`
-2. Add hash function to `hashFunctions` object
-3. Test with sample hashes
-
-### **Extending Wordlists**:
-1. Add .txt files to `wordlists/` directory
-2. Update select options in `index.html`
-3. Platform automatically loads new wordlists
-
-### **Customizing UI**:
-- Modern CSS Grid and Flexbox layout
-- Responsive design for all devices
-- Easy color scheme customization
-- FontAwesome icons included
-
-## 📊 **Performance Benchmarks**
-
-- **MD5**: ~500K attempts/second (4-core CPU)
-- **SHA256**: ~150K attempts/second (4-core CPU)
-- **SHA512**: ~80K attempts/second (4-core CPU)
-- **Memory usage**: <100MB for 1M word wordlist
-- **Load time**: <2 seconds for 500MB wordlist
-
-## 🌟 **Why This Is The Ultimate Platform**
-
-### **vs. Online Hash Crackers**:
-✅ **Privacy**: Your hashes never leave your device  
-✅ **Speed**: Uses your full CPU power  
-✅ **Unlimited**: No rate limits or restrictions  
-✅ **Offline**: Works without internet connection  
-
-### **vs. Command Line Tools**:
-✅ **User-friendly**: Beautiful graphical interface  
-✅ **Real-time feedback**: Live progress and stats  
-✅ **Cross-platform**: Works on any device with a browser  
-✅ **No installation**: Just open and use  
-
-### **vs. Desktop Applications**:
-✅ **Always updated**: Latest algorithms and features  
-✅ **Portable**: Works from any folder or USB drive  
-✅ **Platform independent**: Windows, Mac, Linux, mobile  
-✅ **Open source**: Transparent and auditable code  
-
-## 📄 **License**
-
-MIT License - Use, modify, and distribute freely!
+HashCrack is intended for authorized penetration testing, CTF competitions, and
+educational use. You are responsible for having permission before testing any
+system.
