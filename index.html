@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HashCrack - Professional Hash Cracking Tool for CTF Players</title>
     <meta name="description" content="Client-side hash cracking for CTF players and security researchers. Supports MD5, SHA1, SHA256, SHA512, and more with on-demand wordlists.">
+    <link rel="canonical" href="https://darkmintis.dev/hashcrack/">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%230ea5e9' d='M336 512H176c-26.5 0-48-21.5-48-48v-80H80c-26.5 0-48-21.5-48-48V304c0-26.5 21.5-48 48-48h48v-32c0-88.4 71.6-160 160-160s160 71.6 160 160v32h48c26.5 0 48 21.5 48 48v32c0 26.5-21.5 48-48 48h-48v80c0 26.5-21.5 48-48 48zm0-64v32H176v-32h160zm-128-64v-32h96v32h-96zm160-64v-32h-32v32h32zm-64 0v-32h-32v32h32zm-64 0v-32h-32v32h32z'/%3E%3C/svg%3E" type="image/svg+xml">
 
     <!-- Fonts -->
@@ -210,6 +211,12 @@
             </div>
         </div>
     </div>
+
+    <section id="dm-tool-about" style="max-width:1100px;margin:0 auto;padding:3rem 1.5rem 4rem;line-height:1.7;border-top:1px solid rgba(127,127,127,.25);">
+        <h2 style="font-size:1.5rem;margin:0 0 .75rem;">About HashCrack</h2>
+        <p style="margin:0 0 .85rem;max-width:75ch;">HashCrack is a browser-based hash cracking tool for CTF players, students, and security researchers. It supports MD5, SHA-1, SHA-256, SHA-512, and other common algorithms, and runs dictionary attacks against wordlists you choose. Everything happens in your browser; hashes are never uploaded.</p>
+        <p style="margin:0;max-width:75ch;">Use it to recover passwords from CTF challenges, verify weak password storage, or demonstrate why fast unsalted hashes are unsuitable for real credentials. For generating hashes, try <a href="/hashgenerator/" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">HashGenerator</a>; for the underlying concepts, read the <a href="/blog/sha256-vs-md5-vs-sha512/" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">hash comparison guide</a>.</p>
+    </section>
 
     <!-- Notification Container -->
     <div id="notificationContainer"></div>
