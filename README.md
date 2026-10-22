@@ -67,7 +67,8 @@ python3 -m http.server 8080
 Open <http://localhost:8080>. Any static file server works, but use port 8080:
 the default CDN's CORS policy allows `localhost:8080` and `127.0.0.1:8080`.
 Do not open `index.html` through `file://` because the wordlist downloads use
-`fetch`.
+`fetch`. The same page runs standalone at `/` or under a subpath such as
+`/hashcrack/`.
 
 For local development, `config.js` can point `WORDLIST_CDN` at `"wordlists"` to
 use the uncompressed 10K/100K files in this repository. RockYou requires the
